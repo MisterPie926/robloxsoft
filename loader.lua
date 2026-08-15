@@ -1,346 +1,365 @@
--- Generated automatically by GUI Dumper
+-- Loader for MistePieMenu with LocalScript inside GUI
+
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
-local MistePieMenu_7389 = Instance.new("ScreenGui")
-MistePieMenu_7389.Name = "MistePieMenu"
-MistePieMenu_7389.ResetOnSpawn = true
-MistePieMenu_7389.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-MistePieMenu_7389.Parent = parent
+if parent:FindFirstChild("MistePieMenu") then
+    parent.MistePieMenu:Destroy()
+end
 
-local LocalScript_7812 = Instance.new("LocalScript")
-LocalScript_7812.Name = "LocalScript"
-LocalScript_7812.Source = "local gui = script.Parent\nlocal plr = game.Players.LocalPlayer\nlocal UIS = game:GetService(\"UserInputService\")\nlocal RunService = game:GetService(\"RunService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal char = plr.Character or plr.CharacterAdded:Wait()\nlocal hum = char:WaitForChild(\"Humanoid\")\nlocal rootPart = char:WaitForChild(\"HumanoidRootPart\")\n\nlocal mainframe = gui:WaitForChild(\"MainFrame\")\nlocal cheats = mainframe:WaitForChild(\"Cheats\")\n\nlocal fly = cheats:WaitForChild(\"Fly\")\nlocal speed = cheats:WaitForChild(\"Speed\")\nlocal jump = cheats:WaitForChild(\"Jump\")\nlocal noclip = cheats:WaitForChild(\"Noclip\")\nlocal wallhack = cheats:WaitForChild(\"Wallhack\")\nlocal tp = cheats:WaitForChild(\"Teleport\")\nlocal git = mainframe:WaitForChild(\"GitName\")\nlocal url = git:WaitForChild(\"URL\")\nlocal binds = mainframe:WaitForChild(\"TextBox\")\n\nlocal valuespeed = speed:FindFirstChild(\"TextBox\") or speed\nlocal valuejump = jump:FindFirstChild(\"TextBox\") or jump\nlocal valuetp = tp:FindFirstChild(\"TextBox\") or tp\n\n-- Состояния\nlocal flyEnabled = false\nlocal speedEnabled = false\nlocal jumpEnabled = false\nlocal noclipEnabled = false\nlocal wallhackEnabled = false\nlocal panelVisible = false\nmainframe.Visible = false\n-- Список биндов: { {func = \"fly\", key = \"B\"}, {func = \"noclip\", key = \"B\"} }\nlocal bindList = {}\n\n-- Дефолтные значения\nlocal defaultSpeed = 16\nlocal defaultJump = 7.2\n\n-- Функция парсинга биндов (пересобирает весь список из текста)\n-- Функция парсинга биндов (сохраняет старые при неполном вводе)\nlocal function parseBinds()\n	local newBindList = {}\n	local text = binds.Text or \"\"\n\n	for line in text:gmatch(\"[^\\r\\n]+\") do\n		local f, key = line:match(\"%s*(%w+)%s+(%w)%s*\")\n		if f and key then\n			local funcName = f:lower()\n			local keyName = key:upper()\n\n			-- Пропускаем дубликаты пары функция+клавиша\n			local isDuplicate = false\n			for _, bind in ipairs(newBindList) do\n				if bind.func == funcName and bind.key == keyName then\n					isDuplicate = true\n					break\n				end\n			end\n\n			if not isDuplicate then\n				table.insert(newBindList, {func = funcName, key = keyName})\n			end\n		end\n	end\n\n	-- Обновляем bindList только если есть хотя бы одна корректная строка\n	-- или текст пустой (тогда очищаем список)\n	if #newBindList > 0 or text == \"\" then\n		bindList = newBindList\n	end\nend\n\n-- Слушаем изменения текста\nbinds:GetPropertyChangedSignal(\"Text\"):Connect(parseBinds)\n\n-- Парсим сразу при старте\nparseBinds()\n\n-- Парсим только при потере фокуса или нажатии Enter (чтобы не терять при вводе)\nbinds.FocusLost:Connect(function(enterPressed)\n	parseBinds()\nend)\n\n-- Обновление персонажа\nplr.CharacterAdded:Connect(function(newChar)\n	char = newChar\n	hum = char:WaitForChild(\"Humanoid\")\n	rootPart = char:WaitForChild(\"HumanoidRootPart\")\n	defaultSpeed = hum.WalkSpeed\n	defaultJump = hum.JumpPower\n\n	if speedEnabled then\n		hum.WalkSpeed = tonumber(valuespeed.Text) or 50\n	end\n	if jumpEnabled then\n		hum.JumpPower = tonumber(valuejump.Text) or 50\n	end\n	if noclipEnabled then\n		spawn(function()\n			wait(0.5)\n			for _, part in ipairs(char:GetDescendants()) do\n				if part:IsA(\"BasePart\") and part.CanCollide then\n					part.CanCollide = false\n				end\n			end\n		end)\n	end\n	if flyEnabled then\n		hum.PlatformStand = true\n	end\nend)\n\n-- Открытие/закрытие по H\nUIS.InputBegan:Connect(function(input, gameProcessed)\n	if gameProcessed then return end\n	if input.KeyCode == Enum.KeyCode.H then\n		panelVisible = not panelVisible\n		mainframe.Visible = panelVisible\n	end\nend)\n\n-- НОКЛИП\nlocal function toggleNoclip()\n	noclipEnabled = not noclipEnabled\n	noclip.Text = \"Noclip: \" .. (noclipEnabled and \"ON\" or \"OFF\")\nend\n\nnoclip.MouseButton1Click:Connect(toggleNoclip)\n\nRunService.Stepped:Connect(function()\n	if noclipEnabled and char then\n		for _, part in ipairs(char:GetDescendants()) do\n			if part:IsA(\"BasePart\") and part.CanCollide then\n				part.CanCollide = false\n			end\n		end\n	end\nend)\n\n-- ФЛАЙ\nlocal function toggleFly()\n	flyEnabled = not flyEnabled\n	fly.Text = \"Fly: \" .. (flyEnabled and \"ON\" or \"OFF\")\n	if hum then\n		hum.PlatformStand = flyEnabled\n	end\nend\n\nfly.MouseButton1Click:Connect(toggleFly)\n\nRunService.RenderStepped:Connect(function()\n	if flyEnabled and char and hum and rootPart then\n		hum.PlatformStand = true\n		local direction = Vector3.new()\n		local camera = workspace.CurrentCamera\n\n		if UIS:IsKeyDown(Enum.KeyCode.W) then\n			direction = direction + camera.CFrame.LookVector\n		end\n		if UIS:IsKeyDown(Enum.KeyCode.S) then\n			direction = direction - camera.CFrame.LookVector\n		end\n		if UIS:IsKeyDown(Enum.KeyCode.A) then\n			direction = direction - camera.CFrame.RightVector\n		end\n		if UIS:IsKeyDown(Enum.KeyCode.D) then\n			direction = direction + camera.CFrame.RightVector\n		end\n		if UIS:IsKeyDown(Enum.KeyCode.Space) then\n			direction = direction + Vector3.new(0, 1, 0)\n		end\n		if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then\n			direction = direction - Vector3.new(0, 1, 0)\n		end\n\n		if direction.Magnitude > 0 then\n			direction = direction.Unit\n		end\n\n		rootPart.Velocity = direction * 50\n	end\nend)\n\n-- СПИД\nlocal function toggleSpeed()\n	speedEnabled = not speedEnabled\n	speed.Text = \"Speed: \" .. (speedEnabled and \"ON\" or \"OFF\")\n	if hum then\n		if speedEnabled then\n			hum.WalkSpeed = tonumber(valuespeed.Text) or 50\n		else\n			hum.WalkSpeed = defaultSpeed\n		end\n	end\nend\n\nspeed.MouseButton1Click:Connect(toggleSpeed)\n\n-- ПРЫЖОК\nlocal function toggleJump()\n	jumpEnabled = not jumpEnabled\n	jump.Text = \"Jump: \" .. (jumpEnabled and \"ON\" or \"OFF\")\n	if hum then\n		if jumpEnabled then\n			hum.JumpPower = tonumber(valuejump.Text) or 50\n		else\n			hum.JumpPower = defaultJump\n		end\n	end\nend\n\njump.MouseButton1Click:Connect(toggleJump)\n\n-- ТЕЛЕПОРТ (исправлен)\nlocal function teleportToPosition(x, y, z)\n	if not char or not hum or not rootPart then return end\n\n	local targetPos = Vector3.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)\n\n	-- Метод 1: Прямая установка CFrame\n	rootPart.CFrame = CFrame.new(targetPos)\n\n	-- Метод 2: Через MoveTo\n	hum:MoveTo(targetPos)\n\n	-- Метод 3: Через Velocity (обход некоторых античитов)\n	rootPart.Velocity = Vector3.new(0, 0, 0)\n	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)\n\n	-- Метод 4: Через PivotTo (для новых версий)\n	if rootPart.PivotTo then\n		rootPart:PivotTo(CFrame.new(targetPos))\n	end\nend\n\n-- Телепорт при нажатии Enter в поле\nvaluetp.FocusLost:Connect(function(enterPressed)\n	if enterPressed then\n		local coords = valuetp.Text\n		local x, y, z = coords:match(\"([%d.-]+)%s*,%s*([%d.-]+)%s*,%s*([%d.-]+)\")\n		if x and y and z then\n			teleportToPosition(x, y, z)\n			print(\"Teleported to:\", x, y, z)\n		else\n			print(\"Invalid coordinates format. Use: x, y, z\")\n		end\n	end\nend)\n\n-- WALLHACK\nlocal function toggleWallhack()\n	wallhackEnabled = not wallhackEnabled\n	wallhack.Text = \"Wallhack: \" .. (wallhackEnabled and \"ON\" or \"OFF\")\nend\n\nwallhack.MouseButton1Click:Connect(toggleWallhack)\n\nspawn(function()\n	while true do\n		if wallhackEnabled then\n			for _, player in ipairs(Players:GetPlayers()) do\n				if player ~= plr then\n					local targetChar = player.Character\n					if targetChar then\n						local highlight = targetChar:FindFirstChild(\"WallhackHighlight\")\n						if not highlight then\n							highlight = Instance.new(\"Highlight\")\n							highlight.Name = \"WallhackHighlight\"\n							highlight.FillTransparency = 0.7\n							highlight.OutlineColor = Color3.fromRGB(255, 0, 0)\n							highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop\n							highlight.Parent = targetChar\n						end\n					end\n				end\n			end\n		else\n			for _, player in ipairs(Players:GetPlayers()) do\n				local targetChar = player.Character\n				if targetChar then\n					local highlight = targetChar:FindFirstChild(\"WallhackHighlight\")\n					if highlight then\n						highlight:Destroy()\n					end\n				end\n			end\n		end\n		wait(1)\n	end\nend)\n\n-- Копирование ссылки\nlocal function copyGitLink()\n	local originalText = git.Text\n	local link = url.Value\n\n	if syn and syn.write_clipboard then\n		syn.write_clipboard(link)\n	elseif setclipboard then\n		setclipboard(link)\n	end\n\n	git.Text = \"COPY\"\n\n	spawn(function()\n		wait(3)\n		git.Text = originalText\n	end)\nend\n\ngit.MouseButton1Click:Connect(copyGitLink)\n\n-- Обработка биндов (поддержка нескольких функций на одну клавишу)\nUIS.InputBegan:Connect(function(input, gameProcessed)\n	if gameProcessed then return end\n\n	local keyPressed = input.KeyCode\n\n	for _, bind in ipairs(bindList) do\n		if keyPressed == Enum.KeyCode[bind.key] then\n			if bind.func == \"fly\" then\n				toggleFly()\n			elseif bind.func == \"noclip\" then\n				toggleNoclip()\n			elseif bind.func == \"speed\" then\n				toggleSpeed()\n			elseif bind.func == \"jump\" then\n				toggleJump()\n			end\n		end\n	end\nend)\n\nprint(\"MistePieMenu loaded successfully\")\nprint(\"Binds:\", bindList)"
-LocalScript_7812.Parent = MistePieMenu_7389
+-- 1. Создание ScreenGui
+local MistePieMenu = Instance.new("ScreenGui")
+MistePieMenu.Name = "MistePieMenu"
+MistePieMenu.ResetOnSpawn = true
+MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+MistePieMenu.Parent = parent
 
-local MainFrame_5702 = Instance.new("Frame")
-MainFrame_5702.Name = "MainFrame"
-MainFrame_5702.Position = UDim2.new(0.35069161653518677, 0, 0.0914454311132431, 0)
-MainFrame_5702.Size = UDim2.new(0, 503, 0, 584)
-MainFrame_5702.AnchorPoint = Vector2.new(0, 0)
-MainFrame_5702.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
-MainFrame_5702.BackgroundTransparency = 0.5
-MainFrame_5702.BorderSizePixel = 0
-MainFrame_5702.Visible = true
-MainFrame_5702.ZIndex = 1
-MainFrame_5702.Parent = MistePieMenu_7389
+-- 2. Создание физического объекта LocalScript внутри ScreenGui
+local LocalScript = Instance.new("LocalScript")
+LocalScript.Name = "LocalScript"
+LocalScript.Parent = MistePieMenu
 
-local UICorner_4479 = Instance.new("UICorner")
-UICorner_4479.Name = "UICorner"
-UICorner_4479.CornerRadius = UDim.new(0, 8)
-UICorner_4479.Parent = MainFrame_5702
+-- 3. Создание UI элементов
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Position = UDim2.new(0.3506916, 0, 0.0914454, 0)
+MainFrame.Size = UDim2.new(0, 503, 0, 584)
+MainFrame.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
+MainFrame.BackgroundTransparency = 0.5
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = true
+MainFrame.ZIndex = 1
+MainFrame.Parent = MistePieMenu
 
-local UIStroke_8117 = Instance.new("UIStroke")
-UIStroke_8117.Name = "UIStroke"
-UIStroke_8117.Parent = MainFrame_5702
+local UICorner = Instance.new("UICorner")
+UICorner.Name = "UICorner"
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
 
-local Cheats_1212 = Instance.new("Folder")
-Cheats_1212.Name = "Cheats"
-Cheats_1212.Parent = MainFrame_5702
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Name = "UIStroke"
+UIStroke.Parent = MainFrame
 
-local Teleport_7374 = Instance.new("TextButton")
-Teleport_7374.Name = "Teleport"
-Teleport_7374.Position = UDim2.new(0.28827038407325745, 0, 0.48630136251449585, 0)
-Teleport_7374.Size = UDim2.new(0, 76, 0, 67)
-Teleport_7374.AnchorPoint = Vector2.new(0, 0)
-Teleport_7374.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-Teleport_7374.BackgroundTransparency = 0
-Teleport_7374.BorderSizePixel = 0
-Teleport_7374.Visible = true
-Teleport_7374.ZIndex = 1
-Teleport_7374.Text = "Teleport. Write xyz coord"
-Teleport_7374.TextColor3 = Color3.fromRGB(0, 0, 0)
-Teleport_7374.TextSize = 14
-Teleport_7374.Font = Enum.Font.SourceSans
-Teleport_7374.TextScaled = true
-Teleport_7374.TextXAlignment = Enum.TextXAlignment.Center
-Teleport_7374.TextYAlignment = Enum.TextYAlignment.Center
-Teleport_7374.Parent = Cheats_1212
+local Cheats = Instance.new("Folder")
+Cheats.Name = "Cheats"
+Cheats.Parent = MainFrame
 
-local UIStroke_6288 = Instance.new("UIStroke")
-UIStroke_6288.Name = "UIStroke"
-UIStroke_6288.Parent = Teleport_7374
+local function createBtn(name, text, pos, parentObj)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Position = pos
+    btn.Size = UDim2.new(0, 76, 0, 67)
+    btn.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.SourceSans
+    btn.TextScaled = true
+    btn.Parent = parentObj
 
-local UICorner_8010 = Instance.new("UICorner")
-UICorner_8010.Name = "UICorner"
-UICorner_8010.CornerRadius = UDim.new(0, 12)
-UICorner_8010.Parent = Teleport_7374
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = btn
 
-local TextBox_5122 = Instance.new("TextBox")
-TextBox_5122.Name = "TextBox"
-TextBox_5122.Position = UDim2.new(1.236842155456543, 0, 0, 0)
-TextBox_5122.Size = UDim2.new(0, 199, 0, 67)
-TextBox_5122.AnchorPoint = Vector2.new(0, 0)
-TextBox_5122.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-TextBox_5122.BackgroundTransparency = 0
-TextBox_5122.BorderSizePixel = 0
-TextBox_5122.Visible = true
-TextBox_5122.ZIndex = 1
-TextBox_5122.Text = "HERE WRITE"
-TextBox_5122.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextBox_5122.TextSize = 14
-TextBox_5122.Font = Enum.Font.SourceSans
-TextBox_5122.TextScaled = true
-TextBox_5122.TextXAlignment = Enum.TextXAlignment.Center
-TextBox_5122.TextYAlignment = Enum.TextYAlignment.Center
-TextBox_5122.Parent = Teleport_7374
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = btn
+    return btn
+end
 
-local UIStroke_4501 = Instance.new("UIStroke")
-UIStroke_4501.Name = "UIStroke"
-UIStroke_4501.Parent = TextBox_5122
+local function createBox(name, text, pos, parentObj)
+    local tb = Instance.new("TextBox")
+    tb.Name = name
+    tb.Position = pos
+    tb.Size = UDim2.new(0, 199, 0, 67)
+    tb.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
+    tb.BorderSizePixel = 0
+    tb.Text = text
+    tb.TextColor3 = Color3.fromRGB(0, 0, 0)
+    tb.TextSize = 14
+    tb.Font = Enum.Font.SourceSans
+    tb.TextScaled = true
+    tb.Parent = parentObj
 
-local UICorner_4456 = Instance.new("UICorner")
-UICorner_4456.Name = "UICorner"
-UICorner_4456.CornerRadius = UDim.new(0, 12)
-UICorner_4456.Parent = TextBox_5122
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = tb
 
-local Jump_7303 = Instance.new("TextButton")
-Jump_7303.Name = "Jump"
-Jump_7303.Position = UDim2.new(0.28827038407325745, 0, 0.2791095972061157, 0)
-Jump_7303.Size = UDim2.new(0, 76, 0, 67)
-Jump_7303.AnchorPoint = Vector2.new(0, 0)
-Jump_7303.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-Jump_7303.BackgroundTransparency = 0
-Jump_7303.BorderSizePixel = 0
-Jump_7303.Visible = true
-Jump_7303.ZIndex = 1
-Jump_7303.Text = "Speed. Write int for speed and click this but"
-Jump_7303.TextColor3 = Color3.fromRGB(0, 0, 0)
-Jump_7303.TextSize = 14
-Jump_7303.Font = Enum.Font.SourceSans
-Jump_7303.TextScaled = true
-Jump_7303.TextXAlignment = Enum.TextXAlignment.Center
-Jump_7303.TextYAlignment = Enum.TextYAlignment.Center
-Jump_7303.Parent = Cheats_1212
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = tb
+    return tb
+end
 
-local UIStroke_8897 = Instance.new("UIStroke")
-UIStroke_8897.Name = "UIStroke"
-UIStroke_8897.Parent = Jump_7303
+local Teleport = createBtn("Teleport", "Teleport. Write xyz coord", UDim2.new(0.2882703, 0, 0.4863013, 0), Cheats)
+local TeleportBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Teleport)
 
-local UICorner_8450 = Instance.new("UICorner")
-UICorner_8450.Name = "UICorner"
-UICorner_8450.CornerRadius = UDim.new(0, 12)
-UICorner_8450.Parent = Jump_7303
+local Jump = createBtn("Jump", "Speed. Write int for speed and click this but", UDim2.new(0.2882703, 0, 0.2791095, 0), Cheats)
+local JumpBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Jump)
 
-local TextBox_3517 = Instance.new("TextBox")
-TextBox_3517.Name = "TextBox"
-TextBox_3517.Position = UDim2.new(1.236842155456543, 0, 0, 0)
-TextBox_3517.Size = UDim2.new(0, 199, 0, 67)
-TextBox_3517.AnchorPoint = Vector2.new(0, 0)
-TextBox_3517.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-TextBox_3517.BackgroundTransparency = 0
-TextBox_3517.BorderSizePixel = 0
-TextBox_3517.Visible = true
-TextBox_3517.ZIndex = 1
-TextBox_3517.Text = "HERE WRITE"
-TextBox_3517.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextBox_3517.TextSize = 14
-TextBox_3517.Font = Enum.Font.SourceSans
-TextBox_3517.TextScaled = true
-TextBox_3517.TextXAlignment = Enum.TextXAlignment.Center
-TextBox_3517.TextYAlignment = Enum.TextYAlignment.Center
-TextBox_3517.Parent = Jump_7303
+local Speed = createBtn("Speed", "Speed. Write int for speed and click this but", UDim2.new(0.2882703, 0, 0.125, 0), Cheats)
+local SpeedBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Speed)
 
-local UIStroke_8813 = Instance.new("UIStroke")
-UIStroke_8813.Name = "UIStroke"
-UIStroke_8813.Parent = TextBox_3517
+local Wallhack = createBtn("Wallhack", "Wallhack ", UDim2.new(0.0218687, 0, 0.4863013, 0), Cheats)
+local Fly = createBtn("Fly", "FLY", UDim2.new(0.0218687, 0, 0.125, 0), Cheats)
+local Noclip = createBtn("Noclip", "Noclip", UDim2.new(0.0218687, 0, 0.2996575, 0), Cheats)
 
-local UICorner_6604 = Instance.new("UICorner")
-UICorner_6604.Name = "UICorner"
-UICorner_6604.CornerRadius = UDim.new(0, 12)
-UICorner_6604.Parent = TextBox_3517
+local BindsBox = Instance.new("TextBox")
+BindsBox.Name = "TextBox"
+BindsBox.Position = UDim2.new(0.0497017, 0, 0.6678082, 0)
+BindsBox.Size = UDim2.new(0, 452, 0, 147)
+BindsBox.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
+BindsBox.BackgroundTransparency = 0.5
+BindsBox.Text = "Write funcrion and bind. Primer: Fly B"
+BindsBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+BindsBox.TextSize = 14
+BindsBox.Font = Enum.Font.SourceSans
+BindsBox.TextScaled = true
+BindsBox.Parent = MainFrame
 
-local Speed_9185 = Instance.new("TextButton")
-Speed_9185.Name = "Speed"
-Speed_9185.Position = UDim2.new(0.28827038407325745, 0, 0.125, 0)
-Speed_9185.Size = UDim2.new(0, 76, 0, 67)
-Speed_9185.AnchorPoint = Vector2.new(0, 0)
-Speed_9185.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-Speed_9185.BackgroundTransparency = 0
-Speed_9185.BorderSizePixel = 0
-Speed_9185.Visible = true
-Speed_9185.ZIndex = 1
-Speed_9185.Text = "Speed. Write int for speed and click this but"
-Speed_9185.TextColor3 = Color3.fromRGB(0, 0, 0)
-Speed_9185.TextSize = 14
-Speed_9185.Font = Enum.Font.SourceSans
-Speed_9185.TextScaled = true
-Speed_9185.TextXAlignment = Enum.TextXAlignment.Center
-Speed_9185.TextYAlignment = Enum.TextYAlignment.Center
-Speed_9185.Parent = Cheats_1212
+local BindsCorner = Instance.new("UICorner")
+BindsCorner.CornerRadius = UDim.new(0, 8)
+BindsCorner.Parent = BindsBox
 
-local UIStroke_7967 = Instance.new("UIStroke")
-UIStroke_7967.Name = "UIStroke"
-UIStroke_7967.Parent = Speed_9185
+local GitName = createBtn("GitName", "MENY BY: GITHUB MisterPie926", UDim2.new(0, 0, 0, 0), MainFrame)
+GitName.Size = UDim2.new(0, 503, 0, 38)
+GitName.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
 
-local UICorner_2117 = Instance.new("UICorner")
-UICorner_2117.Name = "UICorner"
-UICorner_2117.CornerRadius = UDim.new(0, 12)
-UICorner_2117.Parent = Speed_9185
+local URL = Instance.new("StringValue")
+URL.Name = "URL"
+URL.Value = "https://github.com/MisterPie926"
+URL.Parent = GitName
 
-local TextBox_7831 = Instance.new("TextBox")
-TextBox_7831.Name = "TextBox"
-TextBox_7831.Position = UDim2.new(1.236842155456543, 0, 0, 0)
-TextBox_7831.Size = UDim2.new(0, 199, 0, 67)
-TextBox_7831.AnchorPoint = Vector2.new(0, 0)
-TextBox_7831.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-TextBox_7831.BackgroundTransparency = 0
-TextBox_7831.BorderSizePixel = 0
-TextBox_7831.Visible = true
-TextBox_7831.ZIndex = 1
-TextBox_7831.Text = "HERE WRITE"
-TextBox_7831.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextBox_7831.TextSize = 14
-TextBox_7831.Font = Enum.Font.SourceSans
-TextBox_7831.TextScaled = true
-TextBox_7831.TextXAlignment = Enum.TextXAlignment.Center
-TextBox_7831.TextYAlignment = Enum.TextYAlignment.Center
-TextBox_7831.Parent = Speed_9185
+-- 4. Исходный код LocalScript
+local scriptSource = [[
+local script = ...
+local gui = script.Parent
+local plr = game.Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
-local UIStroke_1100 = Instance.new("UIStroke")
-UIStroke_1100.Name = "UIStroke"
-UIStroke_1100.Parent = TextBox_7831
+local char = plr.Character or plr.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local rootPart = char:WaitForChild("HumanoidRootPart")
 
-local UICorner_1520 = Instance.new("UICorner")
-UICorner_1520.Name = "UICorner"
-UICorner_1520.CornerRadius = UDim.new(0, 12)
-UICorner_1520.Parent = TextBox_7831
+local mainframe = gui:WaitForChild("MainFrame")
+local cheats = mainframe:WaitForChild("Cheats")
 
-local Wallhack_8692 = Instance.new("TextButton")
-Wallhack_8692.Name = "Wallhack"
-Wallhack_8692.Position = UDim2.new(0.021868787705898285, 0, 0.48630136251449585, 0)
-Wallhack_8692.Size = UDim2.new(0, 76, 0, 67)
-Wallhack_8692.AnchorPoint = Vector2.new(0, 0)
-Wallhack_8692.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-Wallhack_8692.BackgroundTransparency = 0
-Wallhack_8692.BorderSizePixel = 0
-Wallhack_8692.Visible = true
-Wallhack_8692.ZIndex = 1
-Wallhack_8692.Text = "Wallhack "
-Wallhack_8692.TextColor3 = Color3.fromRGB(0, 0, 0)
-Wallhack_8692.TextSize = 14
-Wallhack_8692.Font = Enum.Font.SourceSans
-Wallhack_8692.TextScaled = true
-Wallhack_8692.TextXAlignment = Enum.TextXAlignment.Center
-Wallhack_8692.TextYAlignment = Enum.TextYAlignment.Center
-Wallhack_8692.Parent = Cheats_1212
+local fly = cheats:WaitForChild("Fly")
+local speed = cheats:WaitForChild("Speed")
+local jump = cheats:WaitForChild("Jump")
+local noclip = cheats:WaitForChild("Noclip")
+local wallhack = cheats:WaitForChild("Wallhack")
+local tp = cheats:WaitForChild("Teleport")
+local git = mainframe:WaitForChild("GitName")
+local url = git:WaitForChild("URL")
+local binds = mainframe:WaitForChild("TextBox")
 
-local UIStroke_7946 = Instance.new("UIStroke")
-UIStroke_7946.Name = "UIStroke"
-UIStroke_7946.Parent = Wallhack_8692
+local valuespeed = speed:FindFirstChild("TextBox") or speed
+local valuejump = jump:FindFirstChild("TextBox") or jump
+local valuetp = tp:FindFirstChild("TextBox") or tp
 
-local UICorner_6994 = Instance.new("UICorner")
-UICorner_6994.Name = "UICorner"
-UICorner_6994.CornerRadius = UDim.new(0, 12)
-UICorner_6994.Parent = Wallhack_8692
+local flyEnabled = false
+local speedEnabled = false
+local jumpEnabled = false
+local noclipEnabled = false
+local wallhackEnabled = false
+local panelVisible = false
+mainframe.Visible = false
 
-local Fly_7282 = Instance.new("TextButton")
-Fly_7282.Name = "Fly"
-Fly_7282.Position = UDim2.new(0.021868787705898285, 0, 0.125, 0)
-Fly_7282.Size = UDim2.new(0, 76, 0, 67)
-Fly_7282.AnchorPoint = Vector2.new(0, 0)
-Fly_7282.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-Fly_7282.BackgroundTransparency = 0
-Fly_7282.BorderSizePixel = 0
-Fly_7282.Visible = true
-Fly_7282.ZIndex = 1
-Fly_7282.Text = "FLY"
-Fly_7282.TextColor3 = Color3.fromRGB(0, 0, 0)
-Fly_7282.TextSize = 14
-Fly_7282.Font = Enum.Font.SourceSans
-Fly_7282.TextScaled = true
-Fly_7282.TextXAlignment = Enum.TextXAlignment.Center
-Fly_7282.TextYAlignment = Enum.TextYAlignment.Center
-Fly_7282.Parent = Cheats_1212
+local bindList = {}
+local defaultSpeed = 16
+local defaultJump = 7.2
 
-local UIStroke_8052 = Instance.new("UIStroke")
-UIStroke_8052.Name = "UIStroke"
-UIStroke_8052.Parent = Fly_7282
+local function parseBinds()
+	local newBindList = {}
+	local text = binds.Text or ""
+	for line in text:gmatch("[^\r\n]+") do
+		local f, key = line:match("%s*(%w+)%s+(%w)%s*")
+		if f and key then
+			local funcName = f:lower()
+			local keyName = key:upper()
+			local isDuplicate = false
+			for _, bind in ipairs(newBindList) do
+				if bind.func == funcName and bind.key == keyName then
+					isDuplicate = true
+					break
+				end
+			end
+			if not isDuplicate then
+				table.insert(newBindList, {func = funcName, key = keyName})
+			end
+		end
+	end
+	if #newBindList > 0 or text == "" then
+		bindList = newBindList
+	end
+end
 
-local UICorner_9428 = Instance.new("UICorner")
-UICorner_9428.Name = "UICorner"
-UICorner_9428.CornerRadius = UDim.new(0, 12)
-UICorner_9428.Parent = Fly_7282
+binds:GetPropertyChangedSignal("Text"):Connect(parseBinds)
+parseBinds()
 
-local Noclip_2903 = Instance.new("TextButton")
-Noclip_2903.Name = "Noclip"
-Noclip_2903.Position = UDim2.new(0.021868787705898285, 0, 0.29965752363204956, 0)
-Noclip_2903.Size = UDim2.new(0, 76, 0, 67)
-Noclip_2903.AnchorPoint = Vector2.new(0, 0)
-Noclip_2903.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-Noclip_2903.BackgroundTransparency = 0
-Noclip_2903.BorderSizePixel = 0
-Noclip_2903.Visible = true
-Noclip_2903.ZIndex = 1
-Noclip_2903.Text = "Noclip"
-Noclip_2903.TextColor3 = Color3.fromRGB(0, 0, 0)
-Noclip_2903.TextSize = 14
-Noclip_2903.Font = Enum.Font.SourceSans
-Noclip_2903.TextScaled = true
-Noclip_2903.TextXAlignment = Enum.TextXAlignment.Center
-Noclip_2903.TextYAlignment = Enum.TextYAlignment.Center
-Noclip_2903.Parent = Cheats_1212
+binds.FocusLost:Connect(function(enterPressed)
+	parseBinds()
+end)
 
-local UIStroke_2394 = Instance.new("UIStroke")
-UIStroke_2394.Name = "UIStroke"
-UIStroke_2394.Parent = Noclip_2903
+plr.CharacterAdded:Connect(function(newChar)
+	char = newChar
+	hum = char:WaitForChild("Humanoid")
+	rootPart = char:WaitForChild("HumanoidRootPart")
+	defaultSpeed = hum.WalkSpeed
+	defaultJump = hum.JumpPower
 
-local UICorner_6607 = Instance.new("UICorner")
-UICorner_6607.Name = "UICorner"
-UICorner_6607.CornerRadius = UDim.new(0, 12)
-UICorner_6607.Parent = Noclip_2903
+	if speedEnabled then hum.WalkSpeed = tonumber(valuespeed.Text) or 50 end
+	if jumpEnabled then hum.JumpPower = tonumber(valuejump.Text) or 50 end
+	if noclipEnabled then
+		task.spawn(function()
+			task.wait(0.5)
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") and part.CanCollide then
+					part.CanCollide = false
+				end
+			end
+		end)
+	end
+	if flyEnabled then hum.PlatformStand = true end
+end)
 
-local TextBox_4877 = Instance.new("TextBox")
-TextBox_4877.Name = "TextBox"
-TextBox_4877.Position = UDim2.new(0.049701787531375885, 0, 0.6678082346916199, 0)
-TextBox_4877.Size = UDim2.new(0, 452, 0, 147)
-TextBox_4877.AnchorPoint = Vector2.new(0, 0)
-TextBox_4877.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
-TextBox_4877.BackgroundTransparency = 0.5
-TextBox_4877.BorderSizePixel = 0
-TextBox_4877.Visible = true
-TextBox_4877.ZIndex = 1
-TextBox_4877.Text = "Write funcrion and bind. Primer: Fly B"
-TextBox_4877.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextBox_4877.TextSize = 14
-TextBox_4877.Font = Enum.Font.SourceSans
-TextBox_4877.TextScaled = true
-TextBox_4877.TextXAlignment = Enum.TextXAlignment.Center
-TextBox_4877.TextYAlignment = Enum.TextYAlignment.Center
-TextBox_4877.Parent = MainFrame_5702
+UIS.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.H then
+		panelVisible = not panelVisible
+		mainframe.Visible = panelVisible
+	end
+end)
 
-local UICorner_3466 = Instance.new("UICorner")
-UICorner_3466.Name = "UICorner"
-UICorner_3466.CornerRadius = UDim.new(0, 8)
-UICorner_3466.Parent = TextBox_4877
+local function toggleNoclip()
+	noclipEnabled = not noclipEnabled
+	noclip.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
+end
+noclip.MouseButton1Click:Connect(toggleNoclip)
 
-local UIStroke_3133 = Instance.new("UIStroke")
-UIStroke_3133.Name = "UIStroke"
-UIStroke_3133.Parent = TextBox_4877
+RunService.Stepped:Connect(function()
+	if noclipEnabled and char then
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") and part.CanCollide then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
 
-local GitName_9994 = Instance.new("TextButton")
-GitName_9994.Name = "GitName"
-GitName_9994.Position = UDim2.new(0, 0, 0, 0)
-GitName_9994.Size = UDim2.new(0, 503, 0, 38)
-GitName_9994.AnchorPoint = Vector2.new(0, 0)
-GitName_9994.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
-GitName_9994.BackgroundTransparency = 0
-GitName_9994.BorderSizePixel = 0
-GitName_9994.Visible = true
-GitName_9994.ZIndex = 1
-GitName_9994.Text = "MENY BY: GITHUB MisterPie926"
-GitName_9994.TextColor3 = Color3.fromRGB(0, 0, 0)
-GitName_9994.TextSize = 14
-GitName_9994.Font = Enum.Font.SourceSans
-GitName_9994.TextScaled = true
-GitName_9994.TextXAlignment = Enum.TextXAlignment.Center
-GitName_9994.TextYAlignment = Enum.TextYAlignment.Center
-GitName_9994.Parent = MainFrame_5702
+local function toggleFly()
+	flyEnabled = not flyEnabled
+	fly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+	if hum then hum.PlatformStand = flyEnabled end
+end
+fly.MouseButton1Click:Connect(toggleFly)
 
-local UICorner_3042 = Instance.new("UICorner")
-UICorner_3042.Name = "UICorner"
-UICorner_3042.CornerRadius = UDim.new(0, 8)
-UICorner_3042.Parent = GitName_9994
+RunService.RenderStepped:Connect(function()
+	if flyEnabled and char and hum and rootPart then
+		hum.PlatformStand = true
+		local direction = Vector3.new()
+		local camera = workspace.CurrentCamera
 
-local URL_9636 = Instance.new("StringValue")
-URL_9636.Name = "URL"
-URL_9636.Parent = GitName_9994
+		if UIS:IsKeyDown(Enum.KeyCode.W) then direction = direction + camera.CFrame.LookVector end
+		if UIS:IsKeyDown(Enum.KeyCode.S) then direction = direction - camera.CFrame.LookVector end
+		if UIS:IsKeyDown(Enum.KeyCode.A) then direction = direction - camera.CFrame.RightVector end
+		if UIS:IsKeyDown(Enum.KeyCode.D) then direction = direction + camera.CFrame.RightVector end
+		if UIS:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
+		if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
+
+		if direction.Magnitude > 0 then direction = direction.Unit end
+		rootPart.Velocity = direction * 50
+	end
+end)
+
+local function toggleSpeed()
+	speedEnabled = not speedEnabled
+	speed.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
+	if hum then
+		hum.WalkSpeed = speedEnabled and (tonumber(valuespeed.Text) or 50) or defaultSpeed
+	end
+end
+speed.MouseButton1Click:Connect(toggleSpeed)
+
+local function toggleJump()
+	jumpEnabled = not jumpEnabled
+	jump.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
+	if hum then
+		hum.JumpPower = jumpEnabled and (tonumber(valuejump.Text) or 50) or defaultJump
+	end
+end
+jump.MouseButton1Click:Connect(toggleJump)
+
+local function teleportToPosition(x, y, z)
+	if not char or not hum or not rootPart then return end
+	local targetPos = Vector3.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
+	rootPart.CFrame = CFrame.new(targetPos)
+end
+
+valuetp.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local coords = valuetp.Text
+		local x, y, z = coords:match("([%d.-]+)%s*,%s*([%d.-]+)%s*,%s*([%d.-]+)")
+		if x and y and z then
+			teleportToPosition(x, y, z)
+		end
+	end
+end)
+
+local function toggleWallhack()
+	wallhackEnabled = not wallhackEnabled
+	wallhack.Text = "Wallhack: " .. (wallhackEnabled and "ON" or "OFF")
+end
+wallhack.MouseButton1Click:Connect(toggleWallhack)
+
+task.spawn(function()
+	while true do
+		if wallhackEnabled then
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player ~= plr and player.Character then
+					local highlight = player.Character:FindFirstChild("WallhackHighlight") or Instance.new("Highlight")
+					highlight.Name = "WallhackHighlight"
+					highlight.FillTransparency = 0.7
+					highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+					highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+					highlight.Parent = player.Character
+				end
+			end
+		else
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player.Character and player.Character:FindFirstChild("WallhackHighlight") then
+					player.Character.WallhackHighlight:Destroy()
+				end
+			end
+		end
+		task.wait(1)
+	end
+end)
+
+git.MouseButton1Click:Connect(function()
+	local link = url.Value
+	if setclipboard then setclipboard(link) end
+	git.Text = "COPIED!"
+	task.delay(2, function() git.Text = "MENY BY: GITHUB MisterPie926" end)
+end)
+
+UIS.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	for _, bind in ipairs(bindList) do
+		if input.KeyCode == Enum.KeyCode[bind.key] then
+			if bind.func == "fly" then toggleFly()
+			elseif bind.func == "noclip" then toggleNoclip()
+			elseif bind.func == "speed" then toggleSpeed()
+			elseif bind.func == "jump" then toggleJump()
+			end
+		end
+	end
+end)
+
+print("MistePieMenu loaded inside LocalScript!")
+]]
+
+-- Присваиваем текстам свойство Source и запускаем исполнение с передачей 'LocalScript'
+LocalScript.Source = scriptSource
+task.spawn(loadstring(scriptSource), LocalScript)
