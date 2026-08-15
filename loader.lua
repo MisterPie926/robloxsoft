@@ -14,8 +14,7 @@ MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.Parent = parent
 
 -- 2. Создание физического объекта LocalScript внутри ScreenGui
-local LocalScript = Instance.new("LocalScript")
-LocalScript.Name = "LocalScript"
+local LocalScript = script
 LocalScript.Parent = MistePieMenu
 
 -- 3. Создание UI элементов
