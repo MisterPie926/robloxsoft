@@ -1,23 +1,22 @@
--- Loader for MistePieMenu with LocalScript inside GUI
-
-local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
+-- Загрузчик MistePieMenu (можно выполнить через loadstring)
+local parent = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
 if parent:FindFirstChild("MistePieMenu") then
     parent.MistePieMenu:Destroy()
 end
 
--- 1. Создание ScreenGui
 local MistePieMenu = Instance.new("ScreenGui")
 MistePieMenu.Name = "MistePieMenu"
 MistePieMenu.ResetOnSpawn = true
 MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.Parent = parent
 
--- 2. Создание физического объекта LocalScript внутри ScreenGui
-local LocalScript = script
+-- Создаём LocalScript внутри ScreenGui
+local LocalScript = Instance.new("LocalScript")
+LocalScript.Name = "MistePieMenuScript"
 LocalScript.Parent = MistePieMenu
 
--- 3. Создание UI элементов
+-- Создание UI элементов
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Position = UDim2.new(0.3506916, 0, 0.0914454, 0)
@@ -25,7 +24,7 @@ MainFrame.Size = UDim2.new(0, 503, 0, 584)
 MainFrame.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
 MainFrame.BackgroundTransparency = 0.5
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = true
+MainFrame.Visible = false  -- Скрыта по умолчанию, откроется по H
 MainFrame.ZIndex = 1
 MainFrame.Parent = MistePieMenu
 
@@ -91,7 +90,7 @@ end
 local Teleport = createBtn("Teleport", "Teleport. Write xyz coord", UDim2.new(0.2882703, 0, 0.4863013, 0), Cheats)
 local TeleportBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Teleport)
 
-local Jump = createBtn("Jump", "Speed. Write int for speed and click this but", UDim2.new(0.2882703, 0, 0.2791095, 0), Cheats)
+local Jump = createBtn("Jump", "Jump. Write int for jump and click this but", UDim2.new(0.2882703, 0, 0.2791095, 0), Cheats)
 local JumpBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Jump)
 
 local Speed = createBtn("Speed", "Speed. Write int for speed and click this but", UDim2.new(0.2882703, 0, 0.125, 0), Cheats)
@@ -127,11 +126,8 @@ URL.Name = "URL"
 URL.Value = "https://github.com/MisterPie926"
 URL.Parent = GitName
 
--- 4. Исходный код LocalScrip
-
--- Присваиваем текстам свойство Source и запускаем исполнение с передачей 'LocalScript'
+-- Исходный код LocalScript
 LocalScript.Source = [[
-local script = ...
 local gui = script.Parent
 local plr = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -172,193 +168,191 @@ local defaultSpeed = 16
 local defaultJump = 7.2
 
 local function parseBinds()
-	local newBindList = {}
-	local text = binds.Text or ""
-	for line in text:gmatch("[^\r\n]+") do
-		local f, key = line:match("%s*(%w+)%s+(%w)%s*")
-		if f and key then
-			local funcName = f:lower()
-			local keyName = key:upper()
-			local isDuplicate = false
-			for _, bind in ipairs(newBindList) do
-				if bind.func == funcName and bind.key == keyName then
-					isDuplicate = true
-					break
-				end
-			end
-			if not isDuplicate then
-				table.insert(newBindList, {func = funcName, key = keyName})
-			end
-		end
-	end
-	if #newBindList > 0 or text == "" then
-		bindList = newBindList
-	end
+    local newBindList = {}
+    local text = binds.Text or ""
+    for line in text:gmatch("[^\r\n]+") do
+        local f, key = line:match("%s*(%w+)%s+(%w)%s*")
+        if f and key then
+            local funcName = f:lower()
+            local keyName = key:upper()
+            local isDuplicate = false
+            for _, bind in ipairs(newBindList) do
+                if bind.func == funcName and bind.key == keyName then
+                    isDuplicate = true
+                    break
+                end
+            end
+            if not isDuplicate then
+                table.insert(newBindList, {func = funcName, key = keyName})
+            end
+        end
+    end
+    if #newBindList > 0 or text == "" then
+        bindList = newBindList
+    end
 end
 
 binds:GetPropertyChangedSignal("Text"):Connect(parseBinds)
 parseBinds()
 
 binds.FocusLost:Connect(function(enterPressed)
-	parseBinds()
+    parseBinds()
 end)
 
 plr.CharacterAdded:Connect(function(newChar)
-	char = newChar
-	hum = char:WaitForChild("Humanoid")
-	rootPart = char:WaitForChild("HumanoidRootPart")
-	defaultSpeed = hum.WalkSpeed
-	defaultJump = hum.JumpPower
+    char = newChar
+    hum = char:WaitForChild("Humanoid")
+    rootPart = char:WaitForChild("HumanoidRootPart")
+    defaultSpeed = hum.WalkSpeed
+    defaultJump = hum.JumpPower
 
-	if speedEnabled then hum.WalkSpeed = tonumber(valuespeed.Text) or 50 end
-	if jumpEnabled then hum.JumpPower = tonumber(valuejump.Text) or 50 end
-	if noclipEnabled then
-		task.spawn(function()
-			task.wait(0.5)
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.CanCollide then
-					part.CanCollide = false
-				end
-			end
-		end)
-	end
-	if flyEnabled then hum.PlatformStand = true end
+    if speedEnabled then hum.WalkSpeed = tonumber(valuespeed.Text) or 50 end
+    if jumpEnabled then hum.JumpPower = tonumber(valuejump.Text) or 50 end
+    if noclipEnabled then
+        task.spawn(function()
+            task.wait(0.5)
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    end
+    if flyEnabled then hum.PlatformStand = true end
 end)
 
 UIS.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.H then
-		panelVisible = not panelVisible
-		mainframe.Visible = panelVisible
-	end
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.H then
+        panelVisible = not panelVisible
+        mainframe.Visible = panelVisible
+    end
 end)
 
 local function toggleNoclip()
-	noclipEnabled = not noclipEnabled
-	noclip.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
+    noclipEnabled = not noclipEnabled
+    noclip.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
 end
 noclip.MouseButton1Click:Connect(toggleNoclip)
 
 RunService.Stepped:Connect(function()
-	if noclipEnabled and char then
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") and part.CanCollide then
-				part.CanCollide = false
-			end
-		end
-	end
+    if noclipEnabled and char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
 end)
 
 local function toggleFly()
-	flyEnabled = not flyEnabled
-	fly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
-	if hum then hum.PlatformStand = flyEnabled end
+    flyEnabled = not flyEnabled
+    fly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+    if hum then hum.PlatformStand = flyEnabled end
 end
 fly.MouseButton1Click:Connect(toggleFly)
 
 RunService.RenderStepped:Connect(function()
-	if flyEnabled and char and hum and rootPart then
-		hum.PlatformStand = true
-		local direction = Vector3.new()
-		local camera = workspace.CurrentCamera
+    if flyEnabled and char and hum and rootPart then
+        hum.PlatformStand = true
+        local direction = Vector3.new()
+        local camera = workspace.CurrentCamera
 
-		if UIS:IsKeyDown(Enum.KeyCode.W) then direction = direction + camera.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.S) then direction = direction - camera.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.A) then direction = direction - camera.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.D) then direction = direction + camera.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
-		if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.W) then direction = direction + camera.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then direction = direction - camera.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then direction = direction - camera.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then direction = direction + camera.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
 
-		if direction.Magnitude > 0 then direction = direction.Unit end
-		rootPart.Velocity = direction * 50
-	end
+        if direction.Magnitude > 0 then direction = direction.Unit end
+        rootPart.Velocity = direction * 50
+    end
 end)
 
 local function toggleSpeed()
-	speedEnabled = not speedEnabled
-	speed.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
-	if hum then
-		hum.WalkSpeed = speedEnabled and (tonumber(valuespeed.Text) or 50) or defaultSpeed
-	end
+    speedEnabled = not speedEnabled
+    speed.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
+    if hum then
+        hum.WalkSpeed = speedEnabled and (tonumber(valuespeed.Text) or 50) or defaultSpeed
+    end
 end
 speed.MouseButton1Click:Connect(toggleSpeed)
 
 local function toggleJump()
-	jumpEnabled = not jumpEnabled
-	jump.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
-	if hum then
-		hum.JumpPower = jumpEnabled and (tonumber(valuejump.Text) or 50) or defaultJump
-	end
+    jumpEnabled = not jumpEnabled
+    jump.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
+    if hum then
+        hum.JumpPower = jumpEnabled and (tonumber(valuejump.Text) or 50) or defaultJump
+    end
 end
 jump.MouseButton1Click:Connect(toggleJump)
 
 local function teleportToPosition(x, y, z)
-	if not char or not hum or not rootPart then return end
-	local targetPos = Vector3.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
-	rootPart.CFrame = CFrame.new(targetPos)
+    if not char or not hum or not rootPart then return end
+    local targetPos = Vector3.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
+    rootPart.CFrame = CFrame.new(targetPos)
 end
 
 valuetp.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local coords = valuetp.Text
-		local x, y, z = coords:match("([%d.-]+)%s*,%s*([%d.-]+)%s*,%s*([%d.-]+)")
-		if x and y and z then
-			teleportToPosition(x, y, z)
-		end
-	end
+    if enterPressed then
+        local coords = valuetp.Text
+        local x, y, z = coords:match("([%d.-]+)%s*,%s*([%d.-]+)%s*,%s*([%d.-]+)")
+        if x and y and z then
+            teleportToPosition(x, y, z)
+        end
+    end
 end)
 
 local function toggleWallhack()
-	wallhackEnabled = not wallhackEnabled
-	wallhack.Text = "Wallhack: " .. (wallhackEnabled and "ON" or "OFF")
+    wallhackEnabled = not wallhackEnabled
+    wallhack.Text = "Wallhack: " .. (wallhackEnabled and "ON" or "OFF")
 end
 wallhack.MouseButton1Click:Connect(toggleWallhack)
 
 task.spawn(function()
-	while true do
-		if wallhackEnabled then
-			for _, player in ipairs(Players:GetPlayers()) do
-				if player ~= plr and player.Character then
-					local highlight = player.Character:FindFirstChild("WallhackHighlight") or Instance.new("Highlight")
-					highlight.Name = "WallhackHighlight"
-					highlight.FillTransparency = 0.7
-					highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-					highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-					highlight.Parent = player.Character
-				end
-			end
-		else
-			for _, player in ipairs(Players:GetPlayers()) do
-				if player.Character and player.Character:FindFirstChild("WallhackHighlight") then
-					player.Character.WallhackHighlight:Destroy()
-				end
-			end
-		end
-		task.wait(1)
-	end
+    while true do
+        if wallhackEnabled then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= plr and player.Character then
+                    local highlight = player.Character:FindFirstChild("WallhackHighlight") or Instance.new("Highlight")
+                    highlight.Name = "WallhackHighlight"
+                    highlight.FillTransparency = 0.7
+                    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.Parent = player.Character
+                end
+            end
+        else
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Character and player.Character:FindFirstChild("WallhackHighlight") then
+                    player.Character.WallhackHighlight:Destroy()
+                end
+            end
+        end
+        task.wait(1)
+    end
 end)
 
 git.MouseButton1Click:Connect(function()
-	local link = url.Value
-	if setclipboard then setclipboard(link) end
-	git.Text = "COPIED!"
-	task.delay(2, function() git.Text = "MENY BY: GITHUB MisterPie926" end)
+    local link = url.Value
+    if setclipboard then setclipboard(link) end
+    git.Text = "COPIED!"
+    task.delay(2, function() git.Text = "MENY BY: GITHUB MisterPie926" end)
 end)
 
 UIS.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	for _, bind in ipairs(bindList) do
-		if input.KeyCode == Enum.KeyCode[bind.key] then
-			if bind.func == "fly" then toggleFly()
-			elseif bind.func == "noclip" then toggleNoclip()
-			elseif bind.func == "speed" then toggleSpeed()
-			elseif bind.func == "jump" then toggleJump()
-			end
-		end
-	end
+    if gameProcessed then return end
+    for _, bind in ipairs(bindList) do
+        if input.KeyCode == Enum.KeyCode[bind.key] then
+            if bind.func == "fly" then toggleFly()
+            elseif bind.func == "noclip" then toggleNoclip()
+            elseif bind.func == "speed" then toggleSpeed()
+            elseif bind.func == "jump" then toggleJump()
+            end
+        end
+    end
 end)
 
 print("MistePieMenu loaded inside LocalScript!")
 ]]
-
-task.spawn(loadstring(scriptSource), LocalScript)
