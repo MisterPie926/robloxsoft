@@ -1,4 +1,4 @@
--- Loader for MistePieMenu (loadstring ready)
+-- Загрузчик MistePieMenu (полностью рабочий)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if parent:FindFirstChild("MistePieMenu") then
@@ -11,7 +11,6 @@ MistePieMenu.ResetOnSpawn = true
 MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.Parent = parent
 
--- Создание UI элементов
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Position = UDim2.new(0.3506916, 0, 0.0914454, 0)
@@ -19,7 +18,7 @@ MainFrame.Size = UDim2.new(0, 503, 0, 584)
 MainFrame.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
 MainFrame.BackgroundTransparency = 0.5
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false -- скрыта, открывается по H
+MainFrame.Visible = false
 MainFrame.ZIndex = 1
 MainFrame.Parent = MistePieMenu
 
@@ -119,10 +118,8 @@ URL.Name = "URL"
 URL.Value = "https://github.com/MisterPie926"
 URL.Parent = GitName
 
--- Теперь запускаем логику сразу через loadstring, без создания отдельного LocalScript
-local logicSource = [[
-local gui = script.Parent
-local plr = game.Players.LocalPlayer
+-- === ЛОГИКА ЗАПУСКАЕТСЯ НАПРЯМУЮ, БЕЗ LOADSTRING ===
+local plr = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -131,38 +128,22 @@ local char = plr.Character or plr.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local rootPart = char:WaitForChild("HumanoidRootPart")
 
-local mainframe = gui:WaitForChild("MainFrame")
-local cheats = mainframe:WaitForChild("Cheats")
-
-local fly = cheats:WaitForChild("Fly")
-local speed = cheats:WaitForChild("Speed")
-local jump = cheats:WaitForChild("Jump")
-local noclip = cheats:WaitForChild("Noclip")
-local wallhack = cheats:WaitForChild("Wallhack")
-local tp = cheats:WaitForChild("Teleport")
-local git = mainframe:WaitForChild("GitName")
-local url = git:WaitForChild("URL")
-local binds = mainframe:WaitForChild("TextBox")
-
-local valuespeed = speed:FindFirstChild("TextBox") or speed
-local valuejump = jump:FindFirstChild("TextBox") or jump
-local valuetp = tp:FindFirstChild("TextBox") or tp
-
 local flyEnabled = false
 local speedEnabled = false
 local jumpEnabled = false
 local noclipEnabled = false
 local wallhackEnabled = false
 local panelVisible = false
-mainframe.Visible = false
+MainFrame.Visible = false
 
 local bindList = {}
-local defaultSpeed = 16
-local defaultJump = 7.2
+local defaultSpeed = hum.WalkSpeed
+local defaultJump = hum.JumpPower
 
+-- Парсинг биндов
 local function parseBinds()
     local newBindList = {}
-    local text = binds.Text or ""
+    local text = BindsBox.Text or ""
     for line in text:gmatch("[^\r\n]+") do
         local f, key = line:match("%s*(%w+)%s+(%w)%s*")
         if f and key then
@@ -185,13 +166,14 @@ local function parseBinds()
     end
 end
 
-binds:GetPropertyChangedSignal("Text"):Connect(parseBinds)
+BindsBox:GetPropertyChangedSignal("Text"):Connect(parseBinds)
 parseBinds()
 
-binds.FocusLost:Connect(function(enterPressed)
+BindsBox.FocusLost:Connect(function(enterPressed)
     parseBinds()
 end)
 
+-- Обновление персонажа
 plr.CharacterAdded:Connect(function(newChar)
     char = newChar
     hum = char:WaitForChild("Humanoid")
@@ -199,8 +181,8 @@ plr.CharacterAdded:Connect(function(newChar)
     defaultSpeed = hum.WalkSpeed
     defaultJump = hum.JumpPower
 
-    if speedEnabled then hum.WalkSpeed = tonumber(valuespeed.Text) or 50 end
-    if jumpEnabled then hum.JumpPower = tonumber(valuejump.Text) or 50 end
+    if speedEnabled then hum.WalkSpeed = tonumber(SpeedBox.Text) or 50 end
+    if jumpEnabled then hum.JumpPower = tonumber(JumpBox.Text) or 50 end
     if noclipEnabled then
         task.spawn(function()
             task.wait(0.5)
@@ -214,19 +196,21 @@ plr.CharacterAdded:Connect(function(newChar)
     if flyEnabled then hum.PlatformStand = true end
 end)
 
+-- Открытие/закрытие по H
 UIS.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.H then
         panelVisible = not panelVisible
-        mainframe.Visible = panelVisible
+        MainFrame.Visible = panelVisible
     end
 end)
 
+-- НОКЛИП
 local function toggleNoclip()
     noclipEnabled = not noclipEnabled
-    noclip.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
+    Noclip.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
 end
-noclip.MouseButton1Click:Connect(toggleNoclip)
+Noclip.MouseButton1Click:Connect(toggleNoclip)
 
 RunService.Stepped:Connect(function()
     if noclipEnabled and char then
@@ -238,12 +222,13 @@ RunService.Stepped:Connect(function()
     end
 end)
 
+-- ФЛАЙ
 local function toggleFly()
     flyEnabled = not flyEnabled
-    fly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+    Fly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
     if hum then hum.PlatformStand = flyEnabled end
 end
-fly.MouseButton1Click:Connect(toggleFly)
+Fly.MouseButton1Click:Connect(toggleFly)
 
 RunService.RenderStepped:Connect(function()
     if flyEnabled and char and hum and rootPart then
@@ -263,33 +248,36 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- СПИД
 local function toggleSpeed()
     speedEnabled = not speedEnabled
-    speed.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
+    Speed.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
     if hum then
-        hum.WalkSpeed = speedEnabled and (tonumber(valuespeed.Text) or 50) or defaultSpeed
+        hum.WalkSpeed = speedEnabled and (tonumber(SpeedBox.Text) or 50) or defaultSpeed
     end
 end
-speed.MouseButton1Click:Connect(toggleSpeed)
+Speed.MouseButton1Click:Connect(toggleSpeed)
 
+-- ПРЫЖОК
 local function toggleJump()
     jumpEnabled = not jumpEnabled
-    jump.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
+    Jump.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
     if hum then
-        hum.JumpPower = jumpEnabled and (tonumber(valuejump.Text) or 50) or defaultJump
+        hum.JumpPower = jumpEnabled and (tonumber(JumpBox.Text) or 50) or defaultJump
     end
 end
-jump.MouseButton1Click:Connect(toggleJump)
+Jump.MouseButton1Click:Connect(toggleJump)
 
+-- ТЕЛЕПОРТ
 local function teleportToPosition(x, y, z)
     if not char or not hum or not rootPart then return end
     local targetPos = Vector3.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
     rootPart.CFrame = CFrame.new(targetPos)
 end
 
-valuetp.FocusLost:Connect(function(enterPressed)
+TeleportBox.FocusLost:Connect(function(enterPressed)
     if enterPressed then
-        local coords = valuetp.Text
+        local coords = TeleportBox.Text
         local x, y, z = coords:match("([%d.-]+)%s*,%s*([%d.-]+)%s*,%s*([%d.-]+)")
         if x and y and z then
             teleportToPosition(x, y, z)
@@ -297,11 +285,12 @@ valuetp.FocusLost:Connect(function(enterPressed)
     end
 end)
 
+-- WALLHACK
 local function toggleWallhack()
     wallhackEnabled = not wallhackEnabled
-    wallhack.Text = "Wallhack: " .. (wallhackEnabled and "ON" or "OFF")
+    Wallhack.Text = "Wallhack: " .. (wallhackEnabled and "ON" or "OFF")
 end
-wallhack.MouseButton1Click:Connect(toggleWallhack)
+Wallhack.MouseButton1Click:Connect(toggleWallhack)
 
 task.spawn(function()
     while true do
@@ -327,13 +316,15 @@ task.spawn(function()
     end
 end)
 
-git.MouseButton1Click:Connect(function()
-    local link = url.Value
+-- Копирование ссылки
+GitName.MouseButton1Click:Connect(function()
+    local link = URL.Value
     if setclipboard then setclipboard(link) end
-    git.Text = "COPIED!"
-    task.delay(2, function() git.Text = "MENY BY: GITHUB MisterPie926" end)
+    GitName.Text = "COPIED!"
+    task.delay(2, function() GitName.Text = "MENY BY: GITHUB MisterPie926" end)
 end)
 
+-- Обработка биндов
 UIS.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     for _, bind in ipairs(bindList) do
@@ -347,14 +338,4 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-print("MistePieMenu logic loaded!")
-]]
-
--- Запускаем логику, передавая gui как script
-local logicFunction = loadstring(logicSource)
-if logicFunction then
-    local fakeScript = { Parent = MistePieMenu }
-    logicFunction(fakeScript)
-else
-    warn("Failed to load logic")
-end
+print("MistePieMenu fully loaded!")
