@@ -1,5 +1,5 @@
--- Загрузчик MistePieMenu (можно выполнить через loadstring)
-local parent = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+-- Loader for MistePieMenu (loadstring ready)
+local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if parent:FindFirstChild("MistePieMenu") then
     parent.MistePieMenu:Destroy()
@@ -11,11 +11,6 @@ MistePieMenu.ResetOnSpawn = true
 MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.Parent = parent
 
--- Создаём LocalScript внутри ScreenGui
-local LocalScript = Instance.new("LocalScript")
-LocalScript.Name = "MistePieMenuScript"
-LocalScript.Parent = MistePieMenu
-
 -- Создание UI элементов
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -24,17 +19,15 @@ MainFrame.Size = UDim2.new(0, 503, 0, 584)
 MainFrame.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
 MainFrame.BackgroundTransparency = 0.5
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false  -- Скрыта по умолчанию, откроется по H
+MainFrame.Visible = false -- скрыта, открывается по H
 MainFrame.ZIndex = 1
 MainFrame.Parent = MistePieMenu
 
 local UICorner = Instance.new("UICorner")
-UICorner.Name = "UICorner"
 UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = MainFrame
 
 local UIStroke = Instance.new("UIStroke")
-UIStroke.Name = "UIStroke"
 UIStroke.Parent = MainFrame
 
 local Cheats = Instance.new("Folder")
@@ -90,13 +83,13 @@ end
 local Teleport = createBtn("Teleport", "Teleport. Write xyz coord", UDim2.new(0.2882703, 0, 0.4863013, 0), Cheats)
 local TeleportBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Teleport)
 
-local Jump = createBtn("Jump", "Jump. Write int for jump and click this but", UDim2.new(0.2882703, 0, 0.2791095, 0), Cheats)
+local Jump = createBtn("Jump", "Jump. Write int for jump", UDim2.new(0.2882703, 0, 0.2791095, 0), Cheats)
 local JumpBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Jump)
 
-local Speed = createBtn("Speed", "Speed. Write int for speed and click this but", UDim2.new(0.2882703, 0, 0.125, 0), Cheats)
+local Speed = createBtn("Speed", "Speed. Write int for speed", UDim2.new(0.2882703, 0, 0.125, 0), Cheats)
 local SpeedBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Speed)
 
-local Wallhack = createBtn("Wallhack", "Wallhack ", UDim2.new(0.0218687, 0, 0.4863013, 0), Cheats)
+local Wallhack = createBtn("Wallhack", "Wallhack", UDim2.new(0.0218687, 0, 0.4863013, 0), Cheats)
 local Fly = createBtn("Fly", "FLY", UDim2.new(0.0218687, 0, 0.125, 0), Cheats)
 local Noclip = createBtn("Noclip", "Noclip", UDim2.new(0.0218687, 0, 0.2996575, 0), Cheats)
 
@@ -106,7 +99,7 @@ BindsBox.Position = UDim2.new(0.0497017, 0, 0.6678082, 0)
 BindsBox.Size = UDim2.new(0, 452, 0, 147)
 BindsBox.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
 BindsBox.BackgroundTransparency = 0.5
-BindsBox.Text = "Write funcrion and bind. Primer: Fly B"
+BindsBox.Text = "Write function and bind. Example: Fly B"
 BindsBox.TextColor3 = Color3.fromRGB(0, 0, 0)
 BindsBox.TextSize = 14
 BindsBox.Font = Enum.Font.SourceSans
@@ -126,8 +119,8 @@ URL.Name = "URL"
 URL.Value = "https://github.com/MisterPie926"
 URL.Parent = GitName
 
--- Исходный код LocalScript
-LocalScript.Source = [[
+-- Теперь запускаем логику сразу через loadstring, без создания отдельного LocalScript
+local logicSource = [[
 local gui = script.Parent
 local plr = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -354,5 +347,14 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-print("MistePieMenu loaded inside LocalScript!")
+print("MistePieMenu logic loaded!")
 ]]
+
+-- Запускаем логику, передавая gui как script
+local logicFunction = loadstring(logicSource)
+if logicFunction then
+    local fakeScript = { Parent = MistePieMenu }
+    logicFunction(fakeScript)
+else
+    warn("Failed to load logic")
+end
