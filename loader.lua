@@ -128,8 +128,10 @@ URL.Name = "URL"
 URL.Value = "https://github.com/MisterPie926"
 URL.Parent = GitName
 
--- 4. Исходный код LocalScript
-local scriptSource = [[
+-- 4. Исходный код LocalScrip
+
+-- Присваиваем текстам свойство Source и запускаем исполнение с передачей 'LocalScript'
+LocalScript.Source = [[
 local script = ...
 local gui = script.Parent
 local plr = game.Players.LocalPlayer
@@ -360,6 +362,4 @@ end)
 print("MistePieMenu loaded inside LocalScript!")
 ]]
 
--- Присваиваем текстам свойство Source и запускаем исполнение с передачей 'LocalScript'
-LocalScript.Source = scriptSource
 task.spawn(loadstring(scriptSource), LocalScript)
