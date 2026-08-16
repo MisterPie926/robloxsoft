@@ -1,8 +1,10 @@
--- MistePieMenu v10 (Global Update)
+-- MistePieMenu v10.1 (Fixed Critical Errors)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
-if getgenv().MistePieFOV then
-    pcall(function() getgenv().MistePieFOV:Remove() end)
+-- Очистка FOV с проверкой getgenv и Destroy
+if getgenv and getgenv().MistePieFOV then
+    pcall(function() getgenv().MistePieFOV:Destroy() end)
+    getgenv().MistePieFOV = nil
 end
 
 if parent:FindFirstChild("MistePieMenu") then
@@ -23,14 +25,14 @@ MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.DisplayOrder = 999
 MistePieMenu.Parent = parent
 
--- Очистка FOV при уничтожении
 MistePieMenu.Destroying:Connect(function()
-    if getgenv().MistePieFOV then
-        pcall(function() getgenv().MistePieFOV:Remove() end)
+    if getgenv and getgenv().MistePieFOV then
+        pcall(function() getgenv().MistePieFOV:Destroy() end)
+        getgenv().MistePieFOV = nil
     end
 end)
 
--- Новый стиль: тёмный с синими акцентами
+-- Новый стиль
 local Container = Instance.new("Frame")
 Container.Name = "Container"
 Container.Position = UDim2.new(0.5, -300, 0.5, -250)
@@ -73,7 +75,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 15, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "✦ MISTE v10 ✦"
+TitleText.Text = "✦ MISTE v10.1 ✦"
 TitleText.TextColor3 = Color3.fromRGB(100, 160, 255)
 TitleText.TextSize = 18
 TitleText.Font = Enum.Font.GothamBold
@@ -96,7 +98,6 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 6)
 CloseCorner.Parent = CloseBtn
 
--- Перетаскивание
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
@@ -118,7 +119,7 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- Вкладки (новый стиль)
+-- Вкладки
 local TabFrame = Instance.new("Frame")
 TabFrame.Position = UDim2.new(0, 0, 0, 40)
 TabFrame.Size = UDim2.new(0, 120, 1, -40)
@@ -162,7 +163,6 @@ ContentFrame.BorderSizePixel = 0
 ContentFrame.ZIndex = 999
 ContentFrame.Parent = Container
 
--- Функции создания элементов
 local function createToggle(name, text, pos, parentObj)
     local toggle = Instance.new("TextButton")
     toggle.Name = name
@@ -324,7 +324,7 @@ AimbotModeLabel.Parent = ContentFrame
 local RageBtn = Instance.new("TextButton")
 RageBtn.Position = UDim2.new(0, 15, 0, 28)
 RageBtn.Size = UDim2.new(0, 55, 0, 30)
-RageBtn.BackgroundColor3 = Color3.fromRGB(25, 30, 50)
+RageBtn.BackgroundColor3 = Color3.fromRGB(80, 30, 40)
 RageBtn.BorderSizePixel = 0
 RageBtn.Text = "Rage"
 RageBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -397,11 +397,10 @@ local aimSmooth = 10
 local hitboxSize = 1
 local aimbotMode = "Rage"
 local panelVisible = false
-local triggerCooldown = 0
+local humanDelayUntil = 0
 
 UIS.MouseBehavior = Enum.MouseBehavior.Default
 
--- Aimbot Mode
 RageBtn.MouseButton1Click:Connect(function()
     aimbotMode = "Rage"
     RageBtn.BackgroundColor3 = Color3.fromRGB(80, 30, 40)
@@ -565,12 +564,19 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Inf Jump
+-- Inf Jump (без task.wait в обработчике)
 UIS.JumpRequest:Connect(function()
     if infJumpEnabled and char and hum then
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        task.wait(0.05)
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- Поддержание бесконечного прыжка через Heartbeat
+RunService.Heartbeat:Connect(function()
+    if infJumpEnabled and char and hum then
+        if hum.FloorMaterial == Enum.Material.Air and UIS:IsKeyDown(Enum.KeyCode.Space) then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
     end
 end)
 
@@ -692,8 +698,50 @@ task.spawn(function()
     end
 end)
 
--- Magic Bullet
-local magicBulletActive = false
+-- Magic Bullet (без прямой перезаписи FireServer)
+local magicBulletHooked = false
+local originalFireServer = nil
+
+local function hookFireServer(remote)
+    if not originalFireServer then
+        originalFireServer = remote.FireServer
+    end
+    -- Используем hookfunction если доступен
+    if hookfunction then
+        local oldFunc = hookfunction(remote.FireServer, function(self, ...)
+            local args = {...}
+            local closestEnemy = nil
+            local closestDist = math.huge
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= plr and player.Character then
+                    local targetHead = player.Character:FindFirstChild("Head")
+                    if targetHead and rootPart then
+                        local dist = (targetHead.Position - rootPart.Position).Magnitude
+                        if dist < closestDist then
+                            closestDist = dist
+                            closestEnemy = targetHead
+                        end
+                    end
+                end
+            end
+
+            if closestEnemy then
+                for i, arg in ipairs(args) do
+                    if typeof(arg) == "Vector3" then
+                        args[i] = closestEnemy.Position
+                    elseif typeof(arg) == "CFrame" then
+                        args[i] = CFrame.new(closestEnemy.Position)
+                    elseif typeof(arg) == "number" and arg > 0 and arg < 1000 then
+                        args[i] = arg * 10
+                    end
+                end
+            end
+
+            return oldFunc(self, unpack(args))
+        end)
+        magicBulletHooked = true
+    end
+end
 
 local function findDamageRemote(tool)
     for _, child in ipairs(tool:GetDescendants()) do
@@ -710,46 +758,12 @@ task.spawn(function()
             local tool = char:FindFirstChildOfClass("Tool")
             if tool then
                 local remote = findDamageRemote(tool)
-                if remote and not magicBulletActive then
-                    magicBulletActive = true
-                    local oldFireServer = remote.FireServer
-                    remote.FireServer = function(self, ...)
-                        local args = {...}
-                        local closestEnemy = nil
-                        local closestDist = math.huge
-                        for _, player in ipairs(Players:GetPlayers()) do
-                            if player ~= plr and player.Character then
-                                local targetHead = player.Character:FindFirstChild("Head")
-                                if targetHead then
-                                    local dist = (targetHead.Position - rootPart.Position).Magnitude
-                                    if dist < closestDist then
-                                        closestDist = dist
-                                        closestEnemy = targetHead
-                                    end
-                                end
-                            end
-                        end
-
-                        if closestEnemy then
-                            for i, arg in ipairs(args) do
-                                if typeof(arg) == "Vector3" then
-                                    args[i] = closestEnemy.Position
-                                elseif typeof(arg) == "CFrame" then
-                                    args[i] = CFrame.new(closestEnemy.Position)
-                                elseif typeof(arg) == "number" and arg > 0 and arg < 1000 then
-                                    args[i] = arg * 10
-                                end
-                            end
-                        end
-
-                        return oldFireServer(self, unpack(args))
-                    end
+                if remote and not magicBulletHooked then
+                    hookFireServer(remote)
                 end
-            else
-                magicBulletActive = false
             end
         end
-        task.wait(0.2)
+        task.wait(0.5)
     end
 end)
 
@@ -761,7 +775,9 @@ if Drawing and Drawing.new then
     FOVCircle.Thickness = 2
     FOVCircle.Radius = 100
     FOVCircle.Color = Color3.fromRGB(60, 120, 255)
-    getgenv().MistePieFOV = FOVCircle
+    if getgenv then
+        getgenv().MistePieFOV = FOVCircle
+    end
 end
 
 RunService.RenderStepped:Connect(function()
@@ -805,7 +821,7 @@ local function getClosestInFOV()
     return closestTarget
 end
 
--- Trigger Bot
+-- Trigger Bot (отдельный поток)
 task.spawn(function()
     while MistePieMenu and MistePieMenu.Parent do
         if triggerBotEnabled and aimbotEnabled then
@@ -847,6 +863,7 @@ local function applyHitboxSize()
     end
 end
 
+-- Aimbot без task.wait в RenderStepped
 RunService.RenderStepped:Connect(function(deltaTime)
     aimSpeed = AimbotSpeedSlider.GetValue()
     aimSmooth = AimbotSmoothSlider.GetValue()
@@ -869,12 +886,15 @@ RunService.RenderStepped:Connect(function(deltaTime)
                 local smoothFactor = aimSmooth / 100
                 camera.CFrame = camera.CFrame:Lerp(targetCFrame, smoothFactor)
             elseif aimbotMode == "Human" then
-                task.wait(math.random(150, 300) / 1000)
-                local targetCFrame = CFrame.lookAt(camera.CFrame.Position, target.Head.Position + Vector3.new(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1)))
-                camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.05)
+                local currentTime = os.clock()
+                if currentTime >= humanDelayUntil then
+                    humanDelayUntil = currentTime + math.random(150, 300) / 1000
+                    local targetCFrame = CFrame.lookAt(camera.CFrame.Position, target.Head.Position + Vector3.new(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1)))
+                    camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.05)
+                end
             end
         end
     end
 end)
 
-print("MistePieMenu v10 loaded!")
+print("MistePieMenu v10.1 loaded!")
