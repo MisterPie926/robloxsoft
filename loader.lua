@@ -1,9 +1,15 @@
--- Загрузчик MistePieMenu (полностью рабочий)
+-- Загрузчик MistePieMenu v3 (исправленный)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if parent:FindFirstChild("MistePieMenu") then
     parent.MistePieMenu:Destroy()
 end
+
+-- ВАЖНО: Объявляем UIS ДО создания слайдеров
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local plr = Players.LocalPlayer
 
 local MistePieMenu = Instance.new("ScreenGui")
 MistePieMenu.Name = "MistePieMenu"
@@ -11,166 +17,442 @@ MistePieMenu.ResetOnSpawn = true
 MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.Parent = parent
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Position = UDim2.new(0.3506916, 0, 0.0914454, 0)
-MainFrame.Size = UDim2.new(0, 503, 0, 584)
-MainFrame.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
-MainFrame.BackgroundTransparency = 0.5
-MainFrame.BorderSizePixel = 0
-MainFrame.Visible = false
-MainFrame.ZIndex = 1
-MainFrame.Parent = MistePieMenu
+-- Главный контейнер
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Position = UDim2.new(0.5, -300, 0.5, -250)
+Container.Size = UDim2.new(0, 600, 0, 500)
+Container.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Container.BorderSizePixel = 0
+Container.Visible = false
+Container.Parent = MistePieMenu
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = MainFrame
+local ContainerCorner = Instance.new("UICorner")
+ContainerCorner.CornerRadius = UDim.new(0, 10)
+ContainerCorner.Parent = Container
 
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Parent = MainFrame
+local ContainerStroke = Instance.new("UIStroke")
+ContainerStroke.Color = Color3.fromRGB(100, 100, 255)
+ContainerStroke.Thickness = 2
+ContainerStroke.Parent = Container
 
-local Cheats = Instance.new("Folder")
-Cheats.Name = "Cheats"
-Cheats.Parent = MainFrame
+-- Заголовок
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Container
 
-local function createBtn(name, text, pos, parentObj)
-    local btn = Instance.new("TextButton")
-    btn.Name = name
-    btn.Position = pos
-    btn.Size = UDim2.new(0, 76, 0, 67)
-    btn.BackgroundColor3 = Color3.fromRGB(170, 170, 255)
-    btn.BorderSizePixel = 0
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.SourceSans
-    btn.TextScaled = true
-    btn.Parent = parentObj
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Parent = btn
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -80, 1, 0)
+TitleText.Position = UDim2.new(0, 10, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "MistePieMenu v3"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.TextSize = 20
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = btn
-    return btn
+-- Кнопка закрытия
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Name = "CloseBtn"
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 5)
+CloseCorner.Parent = CloseBtn
+
+-- Вкладки
+local TabFrame = Instance.new("Frame")
+TabFrame.Name = "TabFrame"
+TabFrame.Position = UDim2.new(0, 0, 0, 40)
+TabFrame.Size = UDim2.new(0, 120, 1, -40)
+TabFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+TabFrame.BorderSizePixel = 0
+TabFrame.Parent = Container
+
+local function createTab(name, text, yPos)
+    local tab = Instance.new("TextButton")
+    tab.Name = name
+    tab.Position = UDim2.new(0, 5, 0, yPos)
+    tab.Size = UDim2.new(1, -10, 0, 35)
+    tab.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+    tab.BorderSizePixel = 0
+    tab.Text = text
+    tab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tab.TextSize = 14
+    tab.Font = Enum.Font.Gotham
+    tab.Parent = TabFrame
+
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 5)
+    tabCorner.Parent = tab
+
+    return tab
 end
 
-local function createBox(name, text, pos, parentObj)
-    local tb = Instance.new("TextBox")
-    tb.Name = name
-    tb.Position = pos
-    tb.Size = UDim2.new(0, 199, 0, 67)
-    tb.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-    tb.BorderSizePixel = 0
-    tb.Text = text
-    tb.TextColor3 = Color3.fromRGB(0, 0, 0)
-    tb.TextSize = 14
-    tb.Font = Enum.Font.SourceSans
-    tb.TextScaled = true
-    tb.Parent = parentObj
+local LegitTab = createTab("LegitTab", "Legit", 10)
+local RageTab = createTab("RageTab", "Rage", 50)
+local VisualTab = createTab("VisualTab", "Visual", 90)
+local MiscTab = createTab("MiscTab", "Misc", 130)
+local SettingsTab = createTab("SettingsTab", "Settings", 170)
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Parent = tb
+-- Контент вкладок
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Position = UDim2.new(0, 120, 0, 40)
+ContentFrame.Size = UDim2.new(1, -120, 1, -40)
+ContentFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+ContentFrame.BorderSizePixel = 0
+ContentFrame.Parent = Container
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = tb
-    return tb
+-- Функция создания кнопки-переключателя
+local function createToggle(name, text, pos, parentObj)
+    local toggle = Instance.new("TextButton")
+    toggle.Name = name
+    toggle.Position = pos
+    toggle.Size = UDim2.new(0, 200, 0, 35)
+    toggle.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    toggle.BorderSizePixel = 0
+    toggle.Text = text .. ": OFF"
+    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.TextSize = 13
+    toggle.Font = Enum.Font.Gotham
+    toggle.Parent = parentObj
+
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 5)
+    toggleCorner.Parent = toggle
+
+    return toggle
 end
 
-local Teleport = createBtn("Teleport", "Teleport. Write xyz coord", UDim2.new(0.2882703, 0, 0.4863013, 0), Cheats)
-local TeleportBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Teleport)
+-- Функция создания слайдера
+local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentObj)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = name .. "Frame"
+    sliderFrame.Position = pos
+    sliderFrame.Size = UDim2.new(0, 200, 0, 50)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = parentObj
 
-local Jump = createBtn("Jump", "Jump. Write int for jump", UDim2.new(0.2882703, 0, 0.2791095, 0), Cheats)
-local JumpBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Jump)
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Size = UDim2.new(1, 0, 0, 20)
+    sliderLabel.BackgroundTransparency = 1
+    sliderLabel.Text = text .. ": " .. defaultVal
+    sliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderLabel.TextSize = 12
+    sliderLabel.Font = Enum.Font.Gotham
+    sliderLabel.Parent = sliderFrame
 
-local Speed = createBtn("Speed", "Speed. Write int for speed", UDim2.new(0.2882703, 0, 0.125, 0), Cheats)
-local SpeedBox = createBox("TextBox", "HERE WRITE", UDim2.new(1.236842, 0, 0, 0), Speed)
+    local sliderBg = Instance.new("Frame")
+    sliderBg.Position = UDim2.new(0, 0, 0, 25)
+    sliderBg.Size = UDim2.new(1, 0, 0, 6)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+    sliderBg.BorderSizePixel = 0
+    sliderBg.Parent = sliderFrame
 
-local Wallhack = createBtn("Wallhack", "Wallhack", UDim2.new(0.0218687, 0, 0.4863013, 0), Cheats)
-local Fly = createBtn("Fly", "FLY", UDim2.new(0.0218687, 0, 0.125, 0), Cheats)
-local Noclip = createBtn("Noclip", "Noclip", UDim2.new(0.0218687, 0, 0.2996575, 0), Cheats)
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(0, 3)
+    sliderCorner.Parent = sliderBg
 
-local BindsBox = Instance.new("TextBox")
-BindsBox.Name = "TextBox"
-BindsBox.Position = UDim2.new(0.0497017, 0, 0.6678082, 0)
-BindsBox.Size = UDim2.new(0, 452, 0, 147)
-BindsBox.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
-BindsBox.BackgroundTransparency = 0.5
-BindsBox.Text = "Write function and bind. Example: Fly B"
-BindsBox.TextColor3 = Color3.fromRGB(0, 0, 0)
-BindsBox.TextSize = 14
-BindsBox.Font = Enum.Font.SourceSans
-BindsBox.TextScaled = true
-BindsBox.Parent = MainFrame
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "Fill"
+    sliderFill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.Parent = sliderBg
 
-local BindsCorner = Instance.new("UICorner")
-BindsCorner.CornerRadius = UDim.new(0, 8)
-BindsCorner.Parent = BindsBox
+    local sliderFillCorner = Instance.new("UICorner")
+    sliderFillCorner.CornerRadius = UDim.new(0, 3)
+    sliderFillCorner.Parent = sliderFill
 
-local GitName = createBtn("GitName", "MENY BY: GITHUB MisterPie926", UDim2.new(0, 0, 0, 0), MainFrame)
-GitName.Size = UDim2.new(0, 503, 0, 38)
-GitName.BackgroundColor3 = Color3.fromRGB(95, 95, 95)
+    local sliderKnob = Instance.new("TextButton")
+    sliderKnob.Name = "Knob"
+    sliderKnob.Position = UDim2.new((defaultVal - minVal) / (maxVal - minVal), -8, 0, -7)
+    sliderKnob.Size = UDim2.new(0, 16, 0, 16)
+    sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderKnob.BorderSizePixel = 0
+    sliderKnob.Text = ""
+    sliderKnob.Parent = sliderBg
 
-local URL = Instance.new("StringValue")
-URL.Name = "URL"
-URL.Value = "https://github.com/MisterPie926"
-URL.Parent = GitName
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(0, 8)
+    knobCorner.Parent = sliderKnob
 
--- === ЛОГИКА ЗАПУСКАЕТСЯ НАПРЯМУЮ, БЕЗ LOADSTRING ===
-local plr = game:GetService("Players").LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+    -- Логика слайдера
+    local dragging = false
+    
+    local function updateSlider(input)
+        local mousePos = input.Position.X
+        local sliderAbsPos = sliderBg.AbsolutePosition.X
+        local sliderWidth = sliderBg.AbsoluteSize.X
+        local percent = math.clamp((mousePos - sliderAbsPos) / sliderWidth, 0, 1)
+        local value = minVal + (maxVal - minVal) * percent
+        
+        sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        sliderKnob.Position = UDim2.new(percent, -8, 0, -7)
+        sliderLabel.Text = text .. ": " .. math.floor(value)
+        
+        return value
+    end
 
+    sliderKnob.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+
+    UIS.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
+            updateSlider(input)
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    return {
+        Frame = sliderFrame,
+        Label = sliderLabel,
+        GetValue = function() return tonumber(sliderLabel.Text:match(": (%d+)")) or defaultVal end
+    }
+end
+
+-- === ВКЛАДКА LEGIT ===
+local AimbotToggle = createToggle("AimbotToggle", "Aimbot", UDim2.new(0, 10, 0, 10), ContentFrame)
+local AimbotFOVSlider = createSlider("AimbotFOV", "FOV", UDim2.new(0, 10, 0, 60), 10, 360, 90, ContentFrame)
+local AimbotSpeedSlider = createSlider("AimbotSpeed", "Speed", UDim2.new(0, 10, 0, 120), 1, 20, 10, ContentFrame)
+
+-- === ВКЛАДКА RAGE ===
+local RageAimbotToggle = createToggle("RageAimbotToggle", "Rage Aimbot", UDim2.new(0, 10, 0, 10), ContentFrame)
+
+-- === ВКЛАДКА VISUAL ===
+local ESPToggle = createToggle("ESPToggle", "ESP", UDim2.new(0, 10, 0, 10), ContentFrame)
+
+-- === ВКЛАДКА MISC ===
+local FlyToggle = createToggle("FlyToggle", "Fly", UDim2.new(0, 10, 0, 10), ContentFrame)
+local NoclipToggle = createToggle("NoclipToggle", "Noclip", UDim2.new(0, 10, 0, 55), ContentFrame)
+local SpeedToggle = createToggle("SpeedToggle", "Speed Hack", UDim2.new(0, 10, 0, 100), ContentFrame)
+local JumpToggle = createToggle("JumpToggle", "Jump Hack", UDim2.new(0, 10, 0, 145), ContentFrame)
+
+-- === ВКЛАДКА SETTINGS ===
+local ColorPicker = Instance.new("TextBox")
+ColorPicker.Name = "ColorPicker"
+ColorPicker.Position = UDim2.new(0, 10, 0, 10)
+ColorPicker.Size = UDim2.new(0, 200, 0, 35)
+ColorPicker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ColorPicker.BorderSizePixel = 0
+ColorPicker.PlaceholderText = "FOV Color (R,G,B)"
+ColorPicker.Text = "255,0,0"
+ColorPicker.TextColor3 = Color3.fromRGB(0, 0, 0)
+ColorPicker.TextSize = 12
+ColorPicker.Font = Enum.Font.Gotham
+ColorPicker.Parent = ContentFrame
+
+local ColorCorner = Instance.new("UICorner")
+ColorCorner.CornerRadius = UDim.new(0, 5)
+ColorCorner.Parent = ColorPicker
+
+-- === ЛОГИКА ===
 local char = plr.Character or plr.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local rootPart = char:WaitForChild("HumanoidRootPart")
 
+local aimbotEnabled = false
 local flyEnabled = false
+local noclipEnabled = false
 local speedEnabled = false
 local jumpEnabled = false
-local noclipEnabled = false
-local wallhackEnabled = false
+local espEnabled = false
+local rageAimbotEnabled = false
+
+local fovColor = Color3.fromRGB(255, 0, 0)
+local aimFOV = 90
+local aimSpeed = 10
 local panelVisible = false
-MainFrame.Visible = false
 
-local bindList = {}
-local defaultSpeed = hum.WalkSpeed
-local defaultJump = hum.JumpPower
+-- Переключение вкладок
+LegitTab.MouseButton1Click:Connect(function()
+    AimbotToggle.Visible = true
+    AimbotFOVSlider.Frame.Visible = true
+    AimbotSpeedSlider.Frame.Visible = true
+    RageAimbotToggle.Visible = false
+    ESPToggle.Visible = false
+    FlyToggle.Visible = false
+    NoclipToggle.Visible = false
+    SpeedToggle.Visible = false
+    JumpToggle.Visible = false
+    ColorPicker.Visible = false
+end)
 
--- Парсинг биндов
-local function parseBinds()
-    local newBindList = {}
-    local text = BindsBox.Text or ""
-    for line in text:gmatch("[^\r\n]+") do
-        local f, key = line:match("%s*(%w+)%s+(%w)%s*")
-        if f and key then
-            local funcName = f:lower()
-            local keyName = key:upper()
-            local isDuplicate = false
-            for _, bind in ipairs(newBindList) do
-                if bind.func == funcName and bind.key == keyName then
-                    isDuplicate = true
-                    break
-                end
-            end
-            if not isDuplicate then
-                table.insert(newBindList, {func = funcName, key = keyName})
-            end
-        end
+RageTab.MouseButton1Click:Connect(function()
+    AimbotToggle.Visible = false
+    AimbotFOVSlider.Frame.Visible = false
+    AimbotSpeedSlider.Frame.Visible = false
+    RageAimbotToggle.Visible = true
+    ESPToggle.Visible = false
+    FlyToggle.Visible = false
+    NoclipToggle.Visible = false
+    SpeedToggle.Visible = false
+    JumpToggle.Visible = false
+    ColorPicker.Visible = false
+end)
+
+VisualTab.MouseButton1Click:Connect(function()
+    AimbotToggle.Visible = false
+    AimbotFOVSlider.Frame.Visible = false
+    AimbotSpeedSlider.Frame.Visible = false
+    RageAimbotToggle.Visible = false
+    ESPToggle.Visible = true
+    FlyToggle.Visible = false
+    NoclipToggle.Visible = false
+    SpeedToggle.Visible = false
+    JumpToggle.Visible = false
+    ColorPicker.Visible = false
+end)
+
+MiscTab.MouseButton1Click:Connect(function()
+    AimbotToggle.Visible = false
+    AimbotFOVSlider.Frame.Visible = false
+    AimbotSpeedSlider.Frame.Visible = false
+    RageAimbotToggle.Visible = false
+    ESPToggle.Visible = false
+    FlyToggle.Visible = true
+    NoclipToggle.Visible = true
+    SpeedToggle.Visible = true
+    JumpToggle.Visible = true
+    ColorPicker.Visible = false
+end)
+
+SettingsTab.MouseButton1Click:Connect(function()
+    AimbotToggle.Visible = false
+    AimbotFOVSlider.Frame.Visible = false
+    AimbotSpeedSlider.Frame.Visible = false
+    RageAimbotToggle.Visible = false
+    ESPToggle.Visible = false
+    FlyToggle.Visible = false
+    NoclipToggle.Visible = false
+    SpeedToggle.Visible = false
+    JumpToggle.Visible = false
+    ColorPicker.Visible = true
+end)
+
+-- Показываем Legit по умолчанию
+-- Стало (правильно):
+AimbotToggle.Visible = true
+AimbotFOVSlider.Frame.Visible = true
+AimbotSpeedSlider.Frame.Visible = true
+RageAimbotToggle.Visible = false
+ESPToggle.Visible = false
+FlyToggle.Visible = false
+NoclipToggle.Visible = false
+SpeedToggle.Visible = false
+JumpToggle.Visible = false
+ColorPicker.Visible = false
+
+-- Открытие/закрытие по H
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.H then
+        panelVisible = not panelVisible
+        Container.Visible = panelVisible
     end
-    if #newBindList > 0 or text == "" then
-        bindList = newBindList
+    if input.KeyCode == Enum.KeyCode.Y then
+        aimbotEnabled = not aimbotEnabled
+        AimbotToggle.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
+        AimbotToggle.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
     end
-end
+end)
 
-BindsBox:GetPropertyChangedSignal("Text"):Connect(parseBinds)
-parseBinds()
+CloseBtn.MouseButton1Click:Connect(function()
+    panelVisible = false
+    Container.Visible = false
+end)
 
-BindsBox.FocusLost:Connect(function(enterPressed)
-    parseBinds()
+-- Обновление цвета FOV
+ColorPicker.FocusLost:Connect(function()
+    local r, g, b = ColorPicker.Text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
+    if r and g and b then
+        fovColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+    end
+end)
+
+-- Aimbot переключатель
+AimbotToggle.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    AimbotToggle.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
+    AimbotToggle.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+end)
+
+-- Fly
+FlyToggle.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    FlyToggle.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+    FlyToggle.BackgroundColor3 = flyEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+    if hum then hum.PlatformStand = flyEnabled end
+end)
+
+-- Noclip
+NoclipToggle.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled
+    NoclipToggle.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
+    NoclipToggle.BackgroundColor3 = noclipEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+end)
+
+-- Speed
+SpeedToggle.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    SpeedToggle.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
+    SpeedToggle.BackgroundColor3 = speedEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+    if hum then
+        hum.WalkSpeed = speedEnabled and 50 or 16
+    end
+end)
+
+-- Jump
+JumpToggle.MouseButton1Click:Connect(function()
+    jumpEnabled = not jumpEnabled
+    JumpToggle.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
+    JumpToggle.BackgroundColor3 = jumpEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+    if hum then
+        hum.JumpPower = jumpEnabled and 50 or 7.2
+    end
+end)
+
+-- ESP
+ESPToggle.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    ESPToggle.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    ESPToggle.BackgroundColor3 = espEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+end)
+
+-- Rage Aimbot
+RageAimbotToggle.MouseButton1Click:Connect(function()
+    rageAimbotEnabled = not rageAimbotEnabled
+    RageAimbotToggle.Text = "Rage Aimbot: " .. (rageAimbotEnabled and "ON" or "OFF")
+    RageAimbotToggle.BackgroundColor3 = rageAimbotEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
 end)
 
 -- Обновление персонажа
@@ -178,11 +460,10 @@ plr.CharacterAdded:Connect(function(newChar)
     char = newChar
     hum = char:WaitForChild("Humanoid")
     rootPart = char:WaitForChild("HumanoidRootPart")
-    defaultSpeed = hum.WalkSpeed
-    defaultJump = hum.JumpPower
-
-    if speedEnabled then hum.WalkSpeed = tonumber(SpeedBox.Text) or 50 end
-    if jumpEnabled then hum.JumpPower = tonumber(JumpBox.Text) or 50 end
+    
+    if flyEnabled then hum.PlatformStand = true end
+    if speedEnabled then hum.WalkSpeed = 50 end
+    if jumpEnabled then hum.JumpPower = 50 end
     if noclipEnabled then
         task.spawn(function()
             task.wait(0.5)
@@ -193,25 +474,9 @@ plr.CharacterAdded:Connect(function(newChar)
             end
         end)
     end
-    if flyEnabled then hum.PlatformStand = true end
 end)
 
--- Открытие/закрытие по H
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.H then
-        panelVisible = not panelVisible
-        MainFrame.Visible = panelVisible
-    end
-end)
-
--- НОКЛИП
-local function toggleNoclip()
-    noclipEnabled = not noclipEnabled
-    Noclip.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
-end
-Noclip.MouseButton1Click:Connect(toggleNoclip)
-
+-- Noclip цикл
 RunService.Stepped:Connect(function()
     if noclipEnabled and char then
         for _, part in ipairs(char:GetDescendants()) do
@@ -222,14 +487,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ФЛАЙ
-local function toggleFly()
-    flyEnabled = not flyEnabled
-    Fly.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
-    if hum then hum.PlatformStand = flyEnabled end
-end
-Fly.MouseButton1Click:Connect(toggleFly)
-
+-- Fly цикл
 RunService.RenderStepped:Connect(function()
     if flyEnabled and char and hum and rootPart then
         hum.PlatformStand = true
@@ -248,67 +506,24 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- СПИД
-local function toggleSpeed()
-    speedEnabled = not speedEnabled
-    Speed.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
-    if hum then
-        hum.WalkSpeed = speedEnabled and (tonumber(SpeedBox.Text) or 50) or defaultSpeed
-    end
-end
-Speed.MouseButton1Click:Connect(toggleSpeed)
-
--- ПРЫЖОК
-local function toggleJump()
-    jumpEnabled = not jumpEnabled
-    Jump.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
-    if hum then
-        hum.JumpPower = jumpEnabled and (tonumber(JumpBox.Text) or 50) or defaultJump
-    end
-end
-Jump.MouseButton1Click:Connect(toggleJump)
-
--- ТЕЛЕПОРТ
-local function teleportToPosition(x, y, z)
-    if not char or not hum or not rootPart then return end
-    local targetPos = Vector3.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
-    rootPart.CFrame = CFrame.new(targetPos)
-end
-
-TeleportBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        local coords = TeleportBox.Text
-        local x, y, z = coords:match("([%d.-]+)%s*,%s*([%d.-]+)%s*,%s*([%d.-]+)")
-        if x and y and z then
-            teleportToPosition(x, y, z)
-        end
-    end
-end)
-
--- WALLHACK
-local function toggleWallhack()
-    wallhackEnabled = not wallhackEnabled
-    Wallhack.Text = "Wallhack: " .. (wallhackEnabled and "ON" or "OFF")
-end
-Wallhack.MouseButton1Click:Connect(toggleWallhack)
-
+-- ESP цикл
 task.spawn(function()
     while true do
-        if wallhackEnabled then
+        if espEnabled then
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= plr and player.Character then
-                    local highlight = player.Character:FindFirstChild("WallhackHighlight") or Instance.new("Highlight")
-                    highlight.Name = "WallhackHighlight"
+                    local highlight = player.Character:FindFirstChild("ESPHighlight") or Instance.new("Highlight")
+                    highlight.Name = "ESPHighlight"
                     highlight.FillTransparency = 0.7
-                    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = fovColor
                     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                     highlight.Parent = player.Character
                 end
             end
         else
             for _, player in ipairs(Players:GetPlayers()) do
-                if player.Character and player.Character:FindFirstChild("WallhackHighlight") then
-                    player.Character.WallhackHighlight:Destroy()
+                if player.Character and player.Character:FindFirstChild("ESPHighlight") then
+                    player.Character.ESPHighlight:Destroy()
                 end
             end
         end
@@ -316,26 +531,85 @@ task.spawn(function()
     end
 end)
 
--- Копирование ссылки
-GitName.MouseButton1Click:Connect(function()
-    local link = URL.Value
-    if setclipboard then setclipboard(link) end
-    GitName.Text = "COPIED!"
-    task.delay(2, function() GitName.Text = "MENY BY: GITHUB MisterPie926" end)
+-- Рисование FOV круга
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Thickness = 2
+FOVCircle.Radius = 100
+FOVCircle.Color = fovColor
+FOVCircle.Position = workspace.CurrentCamera.ViewportSize / 2
+
+-- Обновление FOV круга
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled then
+        local camera = workspace.CurrentCamera
+        aimFOV = AimbotFOVSlider.GetValue()
+        aimSpeed = AimbotSpeedSlider.GetValue()
+        
+        local screenSize = camera.ViewportSize
+        local center = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+        local radius = math.tan(math.rad(aimFOV) / 2) * (screenSize.Y / 2)
+        
+        FOVCircle.Visible = true
+        FOVCircle.Radius = radius
+        FOVCircle.Position = center
+        FOVCircle.Color = fovColor
+    else
+        FOVCircle.Visible = false
+    end
 end)
 
--- Обработка биндов
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    for _, bind in ipairs(bindList) do
-        if input.KeyCode == Enum.KeyCode[bind.key] then
-            if bind.func == "fly" then toggleFly()
-            elseif bind.func == "noclip" then toggleNoclip()
-            elseif bind.func == "speed" then toggleSpeed()
-            elseif bind.func == "jump" then toggleJump()
+-- Aimbot функция
+local function getClosestInFOV()
+    if not char or not rootPart then return nil end
+    local camera = workspace.CurrentCamera
+    local cameraPos = camera.CFrame.Position
+    local cameraForward = camera.CFrame.LookVector
+
+    local closestTarget = nil
+    local closestAngle = math.rad(aimFOV)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= plr and player.Character then
+            local targetChar = player.Character
+            local targetHum = targetChar:FindFirstChild("Humanoid")
+            local targetHead = targetChar:FindFirstChild("Head")
+            
+            if targetHum and targetHead and targetHum.Health > 0 then
+                local directionToTarget = (targetHead.Position - cameraPos).Unit
+                local angle = math.acos(math.clamp(cameraForward:Dot(directionToTarget), -1, 1))
+
+                if angle < closestAngle then
+                    closestAngle = angle
+                    closestTarget = targetHead
+                end
             end
+        end
+    end
+
+    return closestTarget
+end
+
+-- Aimbot цикл (плавная наводка)
+RunService.RenderStepped:Connect(function(deltaTime)
+    if aimbotEnabled and char and rootPart then
+        local target = getClosestInFOV()
+        if target then
+            local camera = workspace.CurrentCamera
+            local targetCFrame = CFrame.lookAt(camera.CFrame.Position, target.Position)
+            
+            local speedMultiplier = aimSpeed / 10
+            camera.CFrame = camera.CFrame:Lerp(targetCFrame, math.clamp(speedMultiplier * deltaTime * 10, 0, 1))
+        end
+    end
+    
+    if rageAimbotEnabled and char and rootPart then
+        local target = getClosestInFOV()
+        if target then
+            local camera = workspace.CurrentCamera
+            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, target.Position)
         end
     end
 end)
 
-print("MistePieMenu fully loaded!")
+print("MistePieMenu v3 loaded!")
