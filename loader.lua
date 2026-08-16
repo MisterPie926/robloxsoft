@@ -1,4 +1,4 @@
--- MistePieMenu v8.1 (Fixed Hitboxes + Trigger Bot + Mass Kill)
+-- MistePieMenu v9 (Magic Bullet + Fixed Everything)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if getgenv().MistePieFOV then
@@ -16,6 +16,8 @@ local TweenService = game:GetService("TweenService")
 local VIM = game:GetService("VirtualInputManager")
 local plr = Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
+local SSS = game:GetService("ServerScriptService")
+local SSC = game:GetService("ServerStorage")
 
 local MistePieMenu = Instance.new("ScreenGui")
 MistePieMenu.Name = "MistePieMenu"
@@ -23,6 +25,13 @@ MistePieMenu.ResetOnSpawn = true
 MistePieMenu.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 MistePieMenu.DisplayOrder = 999
 MistePieMenu.Parent = parent
+
+-- Очистка FOV при уничтожении
+MistePieMenu.Destroying:Connect(function()
+    if FOVCircle then
+        pcall(function() FOVCircle:Remove() end)
+    end
+end)
 
 local Container = Instance.new("Frame")
 Container.Name = "Container"
@@ -46,7 +55,6 @@ ContainerStroke.Thickness = 2
 ContainerStroke.Transparency = 0.3
 ContainerStroke.Parent = Container
 
--- Принудительный курсор
 UIS.MouseBehavior = Enum.MouseBehavior.Default
 
 local TitleBar = Instance.new("Frame")
@@ -61,7 +69,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 20, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "✦ MISTE PIE v8.1 ✦"
+TitleText.Text = "✦ MISTE PIE v9 ✦"
 TitleText.TextColor3 = Color3.fromRGB(180, 130, 255)
 TitleText.TextSize = 22
 TitleText.Font = Enum.Font.GothamBold
@@ -204,17 +212,13 @@ local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentO
         local sliderWidth = sliderBg.AbsoluteSize.X
         local percent = math.clamp((mousePos - sliderAbsPos) / sliderWidth, 0, 1)
         local value = minVal + (maxVal - minVal) * percent
-
         sliderFill.Size = UDim2.new(percent, 0, 1, 0)
         sliderKnob.Position = UDim2.new(percent, -10, 0, -9)
         sliderLabel.Text = text .. ": " .. math.floor(value)
-
         return value
     end
 
-    sliderKnob.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
+    sliderKnob.MouseButton1Down:Connect(function() dragging = true end)
 
     UIS.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
@@ -287,8 +291,11 @@ local AimbotToggle = createToggle("AimbotToggle", "Aimbot", UDim2.new(0, 20, 0, 
 local AimbotFOVSlider = createSlider("AimbotFOV", "FOV", UDim2.new(0, 20, 0, 70), 10, 360, 90, ContentFrame)
 local AimbotSpeedSlider = createSlider("AimbotSpeed", "Speed", UDim2.new(0, 20, 0, 130), 1, 20, 10, ContentFrame)
 local AimbotSmoothSlider = createSlider("AimbotSmooth", "Smooth", UDim2.new(0, 20, 0, 190), 1, 20, 10, ContentFrame)
-local HitboxSlider = createSlider("HitboxSlider", "Hitbox Size", UDim2.new(0, 20, 0, 250), 1, 5, 1, ContentFrame)
+local HitboxSlider = createSlider("HitboxSlider", "Hitbox Size", UDim2.new(0, 20, 0, 250), 1, 3, 1, ContentFrame)
 local TriggerBotToggle = createToggle("TriggerBotToggle", "Trigger Bot", UDim2.new(0, 20, 0, 310), ContentFrame)
+
+-- === MAGIC BULLET ===
+local MagicBulletToggle = createToggle("MagicBulletToggle", "Magic Bullet", UDim2.new(0, 20, 0, 370), ContentFrame)
 
 -- === VISUAL ===
 local ESPToggle = createToggle("ESPToggle", "ESP (Billboard)", UDim2.new(0, 20, 0, 15), ContentFrame)
@@ -308,7 +315,7 @@ local MassKillToggle = createToggle("MassKillToggle", "Mass Kill (Visual)", UDim
 local ToolsList = Instance.new("ScrollingFrame")
 ToolsList.Name = "ToolsList"
 ToolsList.Position = UDim2.new(0, 20, 0, 15)
-ToolsList.Size = UDim2.new(1, -40, 1, -80)
+ToolsList.Size = UDim2.new(1, -40, 1, -100)
 ToolsList.BackgroundColor3 = Color3.fromRGB(25, 15, 50)
 ToolsList.BackgroundTransparency = 0.2
 ToolsList.BorderSizePixel = 0
@@ -320,21 +327,153 @@ local ToolsLayout = Instance.new("UIListLayout")
 ToolsLayout.Padding = UDim.new(0, 3)
 ToolsLayout.Parent = ToolsList
 
+-- Вкладки для сервисов
+local ServiceTabs = Instance.new("Frame")
+ServiceTabs.Position = UDim2.new(0, 20, 1, -80)
+ServiceTabs.Size = UDim2.new(1, -40, 0, 30)
+ServiceTabs.BackgroundTransparency = 1
+ServiceTabs.ZIndex = 999
+ServiceTabs.Parent = ContentFrame
+
+local RSBtn = Instance.new("TextButton")
+RSBtn.Size = UDim2.new(0, 80, 1, 0)
+RSBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 180)
+RSBtn.BorderSizePixel = 0
+RSBtn.Text = "RS"
+RSBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RSBtn.TextSize = 12
+RSBtn.Font = Enum.Font.Gotham
+RSBtn.Parent = ServiceTabs
+
+local SSSBtn = Instance.new("TextButton")
+SSSBtn.Position = UDim2.new(0, 85, 0, 0)
+SSSBtn.Size = UDim2.new(0, 80, 1, 0)
+SSSBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 180)
+SSSBtn.BorderSizePixel = 0
+SSSBtn.Text = "SSS"
+SSSBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SSSBtn.TextSize = 12
+SSSBtn.Font = Enum.Font.Gotham
+SSSBtn.Parent = ServiceTabs
+
+local SSCBtn = Instance.new("TextButton")
+SSCBtn.Position = UDim2.new(0, 170, 0, 0)
+SSCBtn.Size = UDim2.new(0, 80, 1, 0)
+SSCBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 180)
+SSCBtn.BorderSizePixel = 0
+SSCBtn.Text = "SSC"
+SSCBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SSCBtn.TextSize = 12
+SSCBtn.Font = Enum.Font.Gotham
+SSCBtn.Parent = ServiceTabs
+
+local PGBtn = Instance.new("TextButton")
+PGBtn.Position = UDim2.new(0, 255, 0, 0)
+PGBtn.Size = UDim2.new(0, 80, 1, 0)
+PGBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 180)
+PGBtn.BorderSizePixel = 0
+PGBtn.Text = "PG"
+PGBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PGBtn.TextSize = 12
+PGBtn.Font = Enum.Font.Gotham
+PGBtn.Parent = ServiceTabs
+
 local RefreshBtn = Instance.new("TextButton")
-RefreshBtn.Position = UDim2.new(0, 20, 1, -50)
-RefreshBtn.Size = UDim2.new(0, 100, 0, 30)
+RefreshBtn.Position = UDim2.new(0, 340, 0, 0)
+RefreshBtn.Size = UDim2.new(0, 80, 1, 0)
 RefreshBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 180)
-RefreshBtn.BackgroundTransparency = 0.2
 RefreshBtn.BorderSizePixel = 0
-RefreshBtn.Text = "🔄 Обновить"
+RefreshBtn.Text = "🔄"
 RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 RefreshBtn.TextSize = 12
 RefreshBtn.Font = Enum.Font.Gotham
-RefreshBtn.ZIndex = 999
-RefreshBtn.Parent = ContentFrame
+RefreshBtn.Parent = ServiceTabs
+
+-- Окно просмотра скрипта
+local ScriptViewer = Instance.new("Frame")
+ScriptViewer.Position = UDim2.new(0.05, 0, 0.05, 0)
+ScriptViewer.Size = UDim2.new(0.9, 0, 0.9, 0)
+ScriptViewer.BackgroundColor3 = Color3.fromRGB(20, 15, 40)
+ScriptViewer.BackgroundTransparency = 0.1
+ScriptViewer.BorderSizePixel = 0
+ScriptViewer.Visible = false
+ScriptViewer.ZIndex = 1000
+ScriptViewer.Parent = Container
+
+local ScriptViewerTitle = Instance.new("TextLabel")
+ScriptViewerTitle.Size = UDim2.new(1, -90, 0, 30)
+ScriptViewerTitle.Position = UDim2.new(0, 10, 0, 5)
+ScriptViewerTitle.BackgroundTransparency = 1
+ScriptViewerTitle.Text = "Просмотр скрипта"
+ScriptViewerTitle.TextColor3 = Color3.fromRGB(200, 180, 255)
+ScriptViewerTitle.TextSize = 16
+ScriptViewerTitle.Font = Enum.Font.GothamBold
+ScriptViewerTitle.TextXAlignment = Enum.TextXAlignment.Left
+ScriptViewerTitle.Parent = ScriptViewer
+
+local ScriptViewerClose = Instance.new("TextButton")
+ScriptViewerClose.Size = UDim2.new(0, 30, 0, 30)
+ScriptViewerClose.Position = UDim2.new(1, -35, 0, 5)
+ScriptViewerClose.BackgroundColor3 = Color3.fromRGB(255, 50, 80)
+ScriptViewerClose.BorderSizePixel = 0
+ScriptViewerClose.Text = "✕"
+ScriptViewerClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScriptViewerClose.TextSize = 16
+ScriptViewerClose.Font = Enum.Font.GothamBold
+ScriptViewerClose.Parent = ScriptViewer
+
+local CopyScriptBtn = Instance.new("TextButton")
+CopyScriptBtn.Size = UDim2.new(0, 50, 0, 30)
+CopyScriptBtn.Position = UDim2.new(1, -70, 0, 5)
+CopyScriptBtn.BackgroundColor3 = Color3.fromRGB(100, 70, 180)
+CopyScriptBtn.BorderSizePixel = 0
+CopyScriptBtn.Text = "📋"
+CopyScriptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyScriptBtn.TextSize = 16
+CopyScriptBtn.Parent = ScriptViewer
+
+local ScriptText = Instance.new("TextBox")
+ScriptText.Size = UDim2.new(1, -20, 1, -50)
+ScriptText.Position = UDim2.new(0, 10, 0, 40)
+ScriptText.BackgroundColor3 = Color3.fromRGB(10, 8, 20)
+ScriptText.BackgroundTransparency = 0.1
+ScriptText.BorderSizePixel = 0
+ScriptText.Text = ""
+ScriptText.TextColor3 = Color3.fromRGB(200, 200, 255)
+ScriptText.TextSize = 12
+ScriptText.Font = Enum.Font.Code
+ScriptText.TextXAlignment = Enum.TextXAlignment.Left
+ScriptText.TextYAlignment = Enum.TextYAlignment.Top
+ScriptText.MultiLine = true
+ScriptText.TextEditable = true
+ScriptText.ClearTextOnFocus = false
+ScriptText.Parent = ScriptViewer
+
+ScriptViewerClose.MouseButton1Click:Connect(function()
+    ScriptViewer.Visible = false
+end)
+
+CopyScriptBtn.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(ScriptText.Text)
+        CopyScriptBtn.Text = "✅"
+        task.delay(1, function() CopyScriptBtn.Text = "📋" end)
+    end
+end)
+
+-- Текущий сервис для просмотра
+local currentService = RS
 
 -- Функция построения дерева
-local function buildToolsTree()
+local treeConnections = {}
+
+local function buildToolsTree(service)
+    -- Отключаем старые соединения
+    for _, conn in ipairs(treeConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    treeConnections = {}
+
     for _, child in ipairs(ToolsList:GetChildren()) do
         if child:IsA("Frame") then
             child:Destroy()
@@ -390,7 +529,7 @@ local function buildToolsTree()
         local isExpanded = false
 
         if isFolderLike then
-            itemBtn.MouseButton1Click:Connect(function()
+            local btnConn = itemBtn.MouseButton1Click:Connect(function()
                 if not childrenLoaded then
                     childrenContainer = Instance.new("Frame")
                     childrenContainer.Size = UDim2.new(1, 0, 0, 0)
@@ -420,9 +559,10 @@ local function buildToolsTree()
                     itemBtn.Text = (isExpanded and "📂 " or "📁 ") .. item.Name
                 end
             end)
+            table.insert(treeConnections, btnConn)
         else
             if item:IsA("Tool") then
-                itemBtn.MouseButton1Click:Connect(function()
+                local toolConn = itemBtn.MouseButton1Click:Connect(function()
                     local backpack = plr:FindFirstChild("Backpack")
                     if backpack then
                         local clonedTool = item:Clone()
@@ -435,9 +575,10 @@ local function buildToolsTree()
                         end)
                     end
                 end)
+                table.insert(treeConnections, toolConn)
             end
 
-            copyBtn.MouseButton1Click:Connect(function()
+            local copyConn = copyBtn.MouseButton1Click:Connect(function()
                 local backpack = plr:FindFirstChild("Backpack")
                 if backpack then
                     local clonedItem = item:Clone()
@@ -446,39 +587,61 @@ local function buildToolsTree()
                     task.delay(1, function() copyBtn.Text = "📋" end)
                 end
             end)
+            table.insert(treeConnections, copyConn)
 
             if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then
-                viewBtn.MouseButton1Click:Connect(function()
+                local viewConn = viewBtn.MouseButton1Click:Connect(function()
+                    ScriptViewer.Visible = true
                     local success, src = pcall(function() return item.Source end)
-                    if success and src then
-                        if setclipboard then
-                            setclipboard(src)
-                            viewBtn.Text = "✅"
-                            task.delay(1, function() viewBtn.Text = "👁" end)
-                        end
-                    end
+                    ScriptText.Text = success and src or "-- [Ошибка: Нет доступа]"
                 end)
+                table.insert(treeConnections, viewConn)
             end
         end
 
         return nodeFrame
     end
 
-    for _, child in ipairs(RS:GetChildren()) do
+    for _, child in ipairs(service:GetChildren()) do
         createTreeNode(child, 0, nil)
     end
 end
 
-buildToolsTree()
-RefreshBtn.MouseButton1Click:Connect(buildToolsTree)
+buildToolsTree(RS)
+
+RSBtn.MouseButton1Click:Connect(function()
+    currentService = RS
+    buildToolsTree(RS)
+end)
+
+SSSBtn.MouseButton1Click:Connect(function()
+    currentService = SSS
+    buildToolsTree(SSS)
+end)
+
+SSCBtn.MouseButton1Click:Connect(function()
+    currentService = SSC
+    buildToolsTree(SSC)
+end)
+
+PGBtn.MouseButton1Click:Connect(function()
+    currentService = plr:WaitForChild("PlayerGui")
+    buildToolsTree(currentService)
+end)
+
+RefreshBtn.MouseButton1Click:Connect(function()
+    buildToolsTree(currentService)
+end)
 
 -- === ЛОГИКА ===
 local char = plr.Character or plr.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local rootPart = char:WaitForChild("HumanoidRootPart")
+local mouse = plr:GetMouse()
 
 local aimbotEnabled = false
 local triggerBotEnabled = false
+local magicBulletEnabled = false
 local flyEnabled = false
 local noclipEnabled = false
 local speedEnabled = false
@@ -491,8 +654,8 @@ local aimSpeed = 10
 local aimSmooth = 10
 local hitboxSize = 1
 local panelVisible = false
+local triggerCooldown = 0
 
--- Принудительный курсор
 UIS.MouseBehavior = Enum.MouseBehavior.Default
 
 local function animateShow(frame)
@@ -518,10 +681,10 @@ end
 
 local function showTab(tabName)
     local tabs = {
-        Aimbot = {AimbotToggle, AimbotFOVSlider.Frame, AimbotSpeedSlider.Frame, AimbotSmoothSlider.Frame, HitboxSlider.Frame, TriggerBotToggle},
+        Aimbot = {AimbotToggle, AimbotFOVSlider.Frame, AimbotSpeedSlider.Frame, AimbotSmoothSlider.Frame, HitboxSlider.Frame, TriggerBotToggle, MagicBulletToggle},
         Visual = {ESPToggle},
         Misc = {FlyToggle, FlySpeedInput.Parent, NoclipToggle, SpeedToggle, SpeedValueInput.Parent, InfJumpToggle},
-        Tools = {ToolsList, RefreshBtn},
+        Tools = {ToolsList, ServiceTabs},
         Kill = {MassKillToggle}
     }
     for name, elements in pairs(tabs) do
@@ -568,6 +731,12 @@ TriggerBotToggle.MouseButton1Click:Connect(function()
     triggerBotEnabled = not triggerBotEnabled
     TriggerBotToggle.Text = "Trigger Bot: " .. (triggerBotEnabled and "ON" or "OFF")
     TriggerBotToggle.BackgroundColor3 = triggerBotEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(90, 50, 140)
+end)
+
+MagicBulletToggle.MouseButton1Click:Connect(function()
+    magicBulletEnabled = not magicBulletEnabled
+    MagicBulletToggle.Text = "Magic Bullet: " .. (magicBulletEnabled and "ON" or "OFF")
+    MagicBulletToggle.BackgroundColor3 = magicBulletEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(90, 50, 140)
 end)
 
 FlyToggle.MouseButton1Click:Connect(function()
@@ -620,11 +789,15 @@ plr.CharacterAdded:Connect(function(newChar)
     end
 end)
 
--- Noclip
+-- Noclip (оптимизировано)
 RunService.Stepped:Connect(function()
     if noclipEnabled and char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+        local keyParts = {"HumanoidRootPart", "UpperTorso", "LowerTorso", "Head"}
+        for _, partName in ipairs(keyParts) do
+            local part = char:FindFirstChild(partName)
+            if part and part:IsA("BasePart") then
+                part.CanCollide = false
+            end
         end
     end
 end)
@@ -750,7 +923,7 @@ task.spawn(function()
     end
 end)
 
--- Mass Kill (визуальный эффект — парты и заморозка только визуально)
+-- Mass Kill (визуальный)
 task.spawn(function()
     while MistePieMenu and MistePieMenu.Parent do
         if massKillEnabled and char and rootPart then
@@ -761,7 +934,6 @@ task.spawn(function()
                 end
             end
 
-            -- Создаём 10 партов перед собой
             for i = 1, 10 do
                 local part = Instance.new("Part")
                 part.Size = Vector3.new(3, 3, 3)
@@ -774,7 +946,6 @@ task.spawn(function()
                 task.delay(3, function() part:Destroy() end)
             end
 
-            -- Распределяем игроков по партам (клиентская визуализация)
             local index = 0
             for _, player in ipairs(players) do
                 index += 1
@@ -782,7 +953,6 @@ task.spawn(function()
                 local targetChar = player.Character
                 local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
                 if targetRoot then
-                    -- Визуальная заморозка (клиентская)
                     targetRoot.Anchored = true
                     local pos = rootPart.Position + rootPart.CFrame.LookVector * (5 + index * 3) + Vector3.new(0, 3, 0)
                     targetRoot.CFrame = CFrame.lookAt(pos, rootPart.Position)
@@ -790,6 +960,95 @@ task.spawn(function()
             end
         end
         task.wait(1)
+    end
+end)
+
+-- Magic Bullet
+local magicBulletConnections = {}
+
+local function findDamageRemote(tool)
+    for _, child in ipairs(tool:GetDescendants()) do
+        if child:IsA("RemoteEvent") then
+            return child
+        end
+    end
+    return nil
+end
+
+local function setupMagicBullet()
+    -- Очищаем старые соединения
+    for _, conn in ipairs(magicBulletConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    magicBulletConnections = {}
+
+    spawn(function()
+        while magicBulletEnabled and MistePieMenu and MistePieMenu.Parent do
+            if char then
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool then
+                    local remote = findDamageRemote(tool)
+                    if remote then
+                        -- Перехватываем RemoteEvent
+                        local oldFireServer = remote.FireServer
+                        remote.FireServer = function(self, ...)
+                            local args = {...}
+                            -- Находим ближайшего врага
+                            local closestEnemy = nil
+                            local closestDist = math.huge
+                            for _, player in ipairs(Players:GetPlayers()) do
+                                if player ~= plr and player.Character then
+                                    local targetHead = player.Character:FindFirstChild("Head")
+                                    if targetHead then
+                                        local dist = (targetHead.Position - rootPart.Position).Magnitude
+                                        if dist < closestDist then
+                                            closestDist = dist
+                                            closestEnemy = targetHead
+                                        end
+                                    end
+                                end
+                            end
+
+                            if closestEnemy then
+                                -- Меняем координаты на голову врага
+                                for i, arg in ipairs(args) do
+                                    if typeof(arg) == "Vector3" then
+                                        args[i] = closestEnemy.Position
+                                    elseif typeof(arg) == "CFrame" then
+                                        args[i] = CFrame.new(closestEnemy.Position)
+                                    end
+                                end
+
+                                -- Пробуем увеличить урон
+                                for i, arg in ipairs(args) do
+                                    if typeof(arg) == "number" and arg > 0 and arg < 1000 then
+                                        args[i] = arg * 10
+                                    end
+                                end
+                            end
+
+                            return oldFireServer(self, unpack(args))
+                        end
+                    end
+                end
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
+MagicBulletToggle.MouseButton1Click:Connect(function()
+    magicBulletEnabled = not magicBulletEnabled
+    MagicBulletToggle.Text = "Magic Bullet: " .. (magicBulletEnabled and "ON" or "OFF")
+    MagicBulletToggle.BackgroundColor3 = magicBulletEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(90, 50, 140)
+
+    if magicBulletEnabled then
+        setupMagicBullet()
+    else
+        for _, conn in ipairs(magicBulletConnections) do
+            pcall(function() conn:Disconnect() end)
+        end
+        magicBulletConnections = {}
     end
 end)
 
@@ -845,57 +1104,63 @@ local function getClosestInFOV()
     return closestTarget
 end
 
--- Увеличенные хитбоксы (вызываются в цикле)
-local function expandHitboxes()
+-- Хитбоксы с проверкой валидности
+local function applyHitboxSize()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= plr and player.Character then
             local targetChar = player.Character
             for _, part in ipairs(targetChar:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    if not part:GetAttribute("OriginalSize") then
-                        part:SetAttribute("OriginalSize", part.Size)
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part:IsDescendantOf(workspace) then
+                    if hitboxSize > 1 then
+                        if not part:GetAttribute("OriginalSize") then
+                            part:SetAttribute("OriginalSize", part.Size)
+                        end
+                        part.Size = part:GetAttribute("OriginalSize") * hitboxSize
+                        part.Transparency = 0.3
+                    else
+                        local origSize = part:GetAttribute("OriginalSize")
+                        if origSize then
+                            part.Size = origSize
+                            part:SetAttribute("OriginalSize", nil)
+                        end
+                        part.Transparency = 0
                     end
-                    part.Size = part:GetAttribute("OriginalSize") * hitboxSize
-                    part.Transparency = 0.3
                 end
             end
         end
     end
 end
 
-local function resetHitboxes()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= plr and player.Character then
-            local targetChar = player.Character
-            for _, part in ipairs(targetChar:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    local origSize = part:GetAttribute("OriginalSize")
-                    if origSize then
-                        part.Size = origSize
-                        part:SetAttribute("OriginalSize", nil)
-                    end
-                    part.Transparency = 0
-                end
-            end
-        end
-    end
-end
-
--- Aimbot + Trigger Bot + Hitboxes
+-- Aimbot + Trigger Bot (исправлено)
 local lastHitboxSize = 1
+local canShoot = true
+
+task.spawn(function()
+    while MistePieMenu and MistePieMenu.Parent do
+        if triggerBotEnabled and aimbotEnabled then
+            local target = getClosestInFOV()
+            if target and canShoot then
+                canShoot = false
+                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                task.wait(0.05)
+                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                task.wait(0.3) -- Кулдаун
+                canShoot = true
+            end
+        end
+        task.wait(0.05)
+    end
+end)
 
 RunService.RenderStepped:Connect(function(deltaTime)
     aimSpeed = AimbotSpeedSlider.GetValue()
     aimSmooth = AimbotSmoothSlider.GetValue()
     hitboxSize = HitboxSlider.GetValue()
 
-    -- Применяем хитбоксы если размер изменился
+    -- Применяем хитбоксы только при изменении
     if hitboxSize ~= lastHitboxSize then
-        resetHitboxes()
         lastHitboxSize = hitboxSize
-        if hitboxSize > 1 then
-            expandHitboxes()
-        end
+        applyHitboxSize()
     end
 
     if aimbotEnabled and char and rootPart then
@@ -910,21 +1175,16 @@ RunService.RenderStepped:Connect(function(deltaTime)
                 local smoothFactor = aimSmooth / 10
                 camera.CFrame = camera.CFrame:Lerp(targetCFrame, math.clamp(smoothFactor * deltaTime * 10, 0, 1))
             end
-
-            -- Trigger Bot через VirtualInputManager
-            if triggerBotEnabled then
-                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait(0.05)
-                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-            end
-        end
-    else
-        -- Сбрасываем хитбоксы если аимбот выключен
-        if lastHitboxSize > 1 then
-            resetHitboxes()
-            lastHitboxSize = 1
         end
     end
 end)
 
-print("MistePieMenu v8.1 loaded!")
+-- Очистка хитбоксов при отключении
+AimbotToggle.MouseButton1Click:Connect(function()
+    if not aimbotEnabled and hitboxSize > 1 then
+        hitboxSize = 1
+        applyHitboxSize()
+    end
+end)
+
+print("MistePieMenu v9 loaded!")
