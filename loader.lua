@@ -1,4 +1,4 @@
--- MistePieMenu v8 (Mass Kill + Advanced Aimbot + Trigger Bot)
+-- MistePieMenu v8.1 (Fixed Hitboxes + Trigger Bot + Mass Kill)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if getgenv().MistePieFOV then
@@ -13,6 +13,7 @@ local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local VIM = game:GetService("VirtualInputManager")
 local plr = Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 
@@ -45,9 +46,8 @@ ContainerStroke.Thickness = 2
 ContainerStroke.Transparency = 0.3
 ContainerStroke.Parent = Container
 
--- Курсор всегда виден
-local UserInputService = game:GetService("UserInputService")
-UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+-- Принудительный курсор
+UIS.MouseBehavior = Enum.MouseBehavior.Default
 
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 50)
@@ -61,7 +61,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 20, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "✦ MISTE PIE v8 ✦"
+TitleText.Text = "✦ MISTE PIE v8.1 ✦"
 TitleText.TextColor3 = Color3.fromRGB(180, 130, 255)
 TitleText.TextSize = 22
 TitleText.Font = Enum.Font.GothamBold
@@ -287,9 +287,7 @@ local AimbotToggle = createToggle("AimbotToggle", "Aimbot", UDim2.new(0, 20, 0, 
 local AimbotFOVSlider = createSlider("AimbotFOV", "FOV", UDim2.new(0, 20, 0, 70), 10, 360, 90, ContentFrame)
 local AimbotSpeedSlider = createSlider("AimbotSpeed", "Speed", UDim2.new(0, 20, 0, 130), 1, 20, 10, ContentFrame)
 local AimbotSmoothSlider = createSlider("AimbotSmooth", "Smooth", UDim2.new(0, 20, 0, 190), 1, 20, 10, ContentFrame)
-local HitboxSlider = createSlider("HitboxSlider", "Hitbox Size", UDim2.new(0, 20, 0, 250), 1, 10, 3, ContentFrame)
-
--- === TRIGGER BOT ===
+local HitboxSlider = createSlider("HitboxSlider", "Hitbox Size", UDim2.new(0, 20, 0, 250), 1, 5, 1, ContentFrame)
 local TriggerBotToggle = createToggle("TriggerBotToggle", "Trigger Bot", UDim2.new(0, 20, 0, 310), ContentFrame)
 
 -- === VISUAL ===
@@ -304,7 +302,7 @@ local SpeedValueInput = createInput("SpeedValueInput", "Скорость:", "50"
 local InfJumpToggle = createToggle("InfJumpToggle", "Inf Jump", UDim2.new(0, 20, 0, 285), ContentFrame)
 
 -- === KILL ===
-local MassKillToggle = createToggle("MassKillToggle", "Mass Kill", UDim2.new(0, 20, 0, 15), ContentFrame)
+local MassKillToggle = createToggle("MassKillToggle", "Mass Kill (Visual)", UDim2.new(0, 20, 0, 15), ContentFrame)
 
 -- === TOOLS ===
 local ToolsList = Instance.new("ScrollingFrame")
@@ -335,7 +333,7 @@ RefreshBtn.Font = Enum.Font.Gotham
 RefreshBtn.ZIndex = 999
 RefreshBtn.Parent = ContentFrame
 
--- Функция построения дерева (переделанная)
+-- Функция построения дерева
 local function buildToolsTree()
     for _, child in ipairs(ToolsList:GetChildren()) do
         if child:IsA("Frame") then
@@ -405,7 +403,7 @@ local function buildToolsTree()
 
                     local totalHeight = 0
                     for _, child in ipairs(item:GetChildren()) do
-                        local childNode = createTreeNode(child, depth + 1, childrenContainer)
+                        createTreeNode(child, depth + 1, childrenContainer)
                         totalHeight += 32
                     end
                     childrenContainer.Size = UDim2.new(1, 0, 0, totalHeight)
@@ -451,7 +449,6 @@ local function buildToolsTree()
 
             if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then
                 viewBtn.MouseButton1Click:Connect(function()
-                    -- Копируем текст скрипта в буфер
                     local success, src = pcall(function() return item.Source end)
                     if success and src then
                         if setclipboard then
@@ -479,7 +476,6 @@ RefreshBtn.MouseButton1Click:Connect(buildToolsTree)
 local char = plr.Character or plr.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local rootPart = char:WaitForChild("HumanoidRootPart")
-local mouse = plr:GetMouse()
 
 local aimbotEnabled = false
 local triggerBotEnabled = false
@@ -493,11 +489,11 @@ local massKillEnabled = false
 local aimFOV = 90
 local aimSpeed = 10
 local aimSmooth = 10
-local hitboxSize = 3
+local hitboxSize = 1
 local panelVisible = false
 
 -- Принудительный курсор
-UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+UIS.MouseBehavior = Enum.MouseBehavior.Default
 
 local function animateShow(frame)
     frame.Visible = true
@@ -754,7 +750,7 @@ task.spawn(function()
     end
 end)
 
--- Mass Kill
+-- Mass Kill (визуальный эффект — парты и заморозка только визуально)
 task.spawn(function()
     while MistePieMenu and MistePieMenu.Parent do
         if massKillEnabled and char and rootPart then
@@ -778,21 +774,17 @@ task.spawn(function()
                 task.delay(3, function() part:Destroy() end)
             end
 
-            -- Распределяем игроков по партам
+            -- Распределяем игроков по партам (клиентская визуализация)
             local index = 0
             for _, player in ipairs(players) do
                 index += 1
                 if index > 10 then break end
                 local targetChar = player.Character
                 local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
-                local targetHum = targetChar:FindFirstChild("Humanoid")
-                if targetRoot and targetHum then
-                    -- Замораживаем
+                if targetRoot then
+                    -- Визуальная заморозка (клиентская)
                     targetRoot.Anchored = true
-                    -- Телепортируем на парт
                     local pos = rootPart.Position + rootPart.CFrame.LookVector * (5 + index * 3) + Vector3.new(0, 3, 0)
-                    targetRoot.CFrame = CFrame.new(pos)
-                    -- Поворачиваем к нам
                     targetRoot.CFrame = CFrame.lookAt(pos, rootPart.Position)
                 end
             end
@@ -853,14 +845,17 @@ local function getClosestInFOV()
     return closestTarget
 end
 
--- Увеличенные хитбоксы
+-- Увеличенные хитбоксы (вызываются в цикле)
 local function expandHitboxes()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= plr and player.Character then
             local targetChar = player.Character
             for _, part in ipairs(targetChar:GetDescendants()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.Size = part.Size * hitboxSize
+                    if not part:GetAttribute("OriginalSize") then
+                        part:SetAttribute("OriginalSize", part.Size)
+                    end
+                    part.Size = part:GetAttribute("OriginalSize") * hitboxSize
                     part.Transparency = 0.3
                 end
             end
@@ -874,7 +869,11 @@ local function resetHitboxes()
             local targetChar = player.Character
             for _, part in ipairs(targetChar:GetDescendants()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.Size = part.Size / hitboxSize
+                    local origSize = part:GetAttribute("OriginalSize")
+                    if origSize then
+                        part.Size = origSize
+                        part:SetAttribute("OriginalSize", nil)
+                    end
                     part.Transparency = 0
                 end
             end
@@ -882,11 +881,22 @@ local function resetHitboxes()
     end
 end
 
--- Aimbot + Trigger Bot
+-- Aimbot + Trigger Bot + Hitboxes
+local lastHitboxSize = 1
+
 RunService.RenderStepped:Connect(function(deltaTime)
     aimSpeed = AimbotSpeedSlider.GetValue()
     aimSmooth = AimbotSmoothSlider.GetValue()
     hitboxSize = HitboxSlider.GetValue()
+
+    -- Применяем хитбоксы если размер изменился
+    if hitboxSize ~= lastHitboxSize then
+        resetHitboxes()
+        lastHitboxSize = hitboxSize
+        if hitboxSize > 1 then
+            expandHitboxes()
+        end
+    end
 
     if aimbotEnabled and char and rootPart then
         local target = getClosestInFOV()
@@ -901,12 +911,20 @@ RunService.RenderStepped:Connect(function(deltaTime)
                 camera.CFrame = camera.CFrame:Lerp(targetCFrame, math.clamp(smoothFactor * deltaTime * 10, 0, 1))
             end
 
-            -- Trigger Bot
+            -- Trigger Bot через VirtualInputManager
             if triggerBotEnabled then
-                mouse1click()
+                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                task.wait(0.05)
+                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
             end
+        end
+    else
+        -- Сбрасываем хитбоксы если аимбот выключен
+        if lastHitboxSize > 1 then
+            resetHitboxes()
+            lastHitboxSize = 1
         end
     end
 end)
 
-print("MistePieMenu v8 loaded!")
+print("MistePieMenu v8.1 loaded!")
