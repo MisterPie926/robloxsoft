@@ -1,4 +1,4 @@
--- MistePieMenu v5 (Advanced Cosmic UI)
+-- MistePieMenu v5.1 (Исправленный)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if parent:FindFirstChild("MistePieMenu") then
@@ -38,7 +38,7 @@ local ContainerStroke = Instance.new("UIStroke")
 ContainerStroke.Color = Color3.fromRGB(130, 80, 255)
 ContainerStroke.Thickness = 2
 ContainerStroke.Transparency = 0.3
-Container.Parent = Container
+ContainerStroke.Parent = Container
 
 -- Звёзды
 local StarsFrame = Instance.new("Frame")
@@ -56,13 +56,15 @@ for i = 1, 80 do
     star.Parent = StarsFrame
 end
 
--- Анимация звёзд
+-- Анимация звёзд (с проверкой существования GUI)
 task.spawn(function()
-    while true do
-        for _, star in ipairs(StarsFrame:GetChildren()) do
-            if star:IsA("Frame") then
-                local newTransparency = math.random(0, 0.6)
-                TweenService:Create(star, TweenInfo.new(math.random(1, 3), Enum.EasingStyle.Linear), {BackgroundTransparency = newTransparency}):Play()
+    while MistePieMenu and MistePieMenu.Parent do
+        if StarsFrame and StarsFrame.Parent then
+            for _, star in ipairs(StarsFrame:GetChildren()) do
+                if star:IsA("Frame") then
+                    local newTransparency = math.random(0, 0.6)
+                    TweenService:Create(star, TweenInfo.new(math.random(1, 3), Enum.EasingStyle.Linear), {BackgroundTransparency = newTransparency}):Play()
+                end
             end
         end
         task.wait(0.1)
@@ -85,7 +87,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 20, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "✦ MISTE PIE v5 ✦"
+TitleText.Text = "✦ MISTE PIE v5.1 ✦"
 TitleText.TextColor3 = Color3.fromRGB(180, 130, 255)
 TitleText.TextSize = 22
 TitleText.Font = Enum.Font.GothamBold
@@ -348,7 +350,6 @@ local ToolsLayout = Instance.new("UIListLayout")
 ToolsLayout.Padding = UDim.new(0, 5)
 ToolsLayout.Parent = ToolsList
 
--- Кнопка обновления
 local RefreshBtn = Instance.new("TextButton")
 RefreshBtn.Position = UDim2.new(0, 20, 1, -50)
 RefreshBtn.Size = UDim2.new(0, 100, 0, 30)
@@ -386,7 +387,6 @@ ScriptViewerStroke.Color = Color3.fromRGB(130, 80, 255)
 ScriptViewerStroke.Thickness = 2
 ScriptViewerStroke.Parent = ScriptViewer
 
--- Заголовок просмотрщика
 local ScriptViewerTitle = Instance.new("TextLabel")
 ScriptViewerTitle.Size = UDim2.new(1, -40, 0, 30)
 ScriptViewerTitle.Position = UDim2.new(0, 10, 0, 5)
@@ -398,7 +398,6 @@ ScriptViewerTitle.Font = Enum.Font.GothamBold
 ScriptViewerTitle.TextXAlignment = Enum.TextXAlignment.Left
 ScriptViewerTitle.Parent = ScriptViewer
 
--- Кнопка закрытия просмотрщика
 local ScriptViewerClose = Instance.new("TextButton")
 ScriptViewerClose.Size = UDim2.new(0, 30, 0, 30)
 ScriptViewerClose.Position = UDim2.new(1, -35, 0, 5)
@@ -414,7 +413,6 @@ local ScriptViewerCloseCorner = Instance.new("UICorner")
 ScriptViewerCloseCorner.CornerRadius = UDim.new(0, 5)
 ScriptViewerCloseCorner.Parent = ScriptViewerClose
 
--- Текст скрипта
 local ScriptText = Instance.new("TextBox")
 ScriptText.Size = UDim2.new(1, -20, 1, -50)
 ScriptText.Position = UDim2.new(0, 10, 0, 40)
@@ -439,7 +437,7 @@ ScriptViewerClose.MouseButton1Click:Connect(function()
     ScriptViewer.Visible = false
 end)
 
--- Функция построения дерева ReplicatedStorage
+-- Функция построения дерева ReplicatedStorage (исправленная)
 local function buildToolsTree()
     for _, child in ipairs(ToolsList:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextButton") then
@@ -447,14 +445,11 @@ local function buildToolsTree()
         end
     end
 
-    local yOffset = 0
-
     local function createItem(item, depth)
         local itemFrame = Instance.new("Frame")
         itemFrame.Size = UDim2.new(1, -20, 0, 35)
-        itemFrame.Position = UDim2.new(0, 5, 0, yOffset)
         itemFrame.BackgroundTransparency = 1
-        itemFrame.Parent = ToolsList
+        itemFrame.Parent = ToolsList -- UIListLayout сам расставит позиции
 
         local itemBtn = Instance.new("TextButton")
         itemBtn.Size = UDim2.new(1, -80, 1, 0)
@@ -473,7 +468,6 @@ local function buildToolsTree()
         itemCorner.CornerRadius = UDim.new(0, 5)
         itemCorner.Parent = itemBtn
 
-        -- Кнопка копирования
         local copyBtn = Instance.new("TextButton")
         copyBtn.Size = UDim2.new(0, 35, 1, 0)
         copyBtn.Position = UDim2.new(1, -70, 0, 0)
@@ -489,7 +483,6 @@ local function buildToolsTree()
         copyCorner.CornerRadius = UDim.new(0, 5)
         copyCorner.Parent = copyBtn
 
-        -- Кнопка просмотра (для скриптов)
         local viewBtn = Instance.new("TextButton")
         viewBtn.Size = UDim2.new(0, 35, 1, 0)
         viewBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -505,9 +498,6 @@ local function buildToolsTree()
         viewCorner.CornerRadius = UDim.new(0, 5)
         viewCorner.Parent = viewBtn
 
-        yOffset += 37
-
-        -- Обработчики
         if item:IsA("Folder") or item:IsA("Model") or item:IsA("Configuration") then
             local isExpanded = false
             local childItems = {}
@@ -526,7 +516,6 @@ local function buildToolsTree()
                 table.insert(childItems, childFrame)
             end
         else
-            -- Для Tool
             if item:IsA("Tool") then
                 itemBtn.MouseButton1Click:Connect(function()
                     local backpack = plr:FindFirstChild("Backpack")
@@ -543,7 +532,6 @@ local function buildToolsTree()
                 end)
             end
 
-            -- Копирование
             copyBtn.MouseButton1Click:Connect(function()
                 local backpack = plr:FindFirstChild("Backpack")
                 if backpack then
@@ -558,11 +546,14 @@ local function buildToolsTree()
                 end
             end)
 
-            -- Просмотр скрипта
+            -- Просмотр скрипта (с pcall для защиты)
             if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then
                 viewBtn.MouseButton1Click:Connect(function()
                     ScriptViewer.Visible = true
-                    ScriptText.Text = item.Source
+                    local success, src = pcall(function()
+                        return item.Source
+                    end)
+                    ScriptText.Text = success and src or "-- [Ошибка: Нет доступа к исходному коду скрипта]"
                 end)
             end
         end
@@ -573,8 +564,6 @@ local function buildToolsTree()
     for _, child in ipairs(RS:GetChildren()) do
         createItem(child, 0)
     end
-
-    ToolsList.CanvasSize = UDim2.new(0, 0, 0, yOffset)
 end
 
 buildToolsTree()
@@ -770,7 +759,7 @@ end)
 
 -- ESP цикл
 task.spawn(function()
-    while true do
+    while MistePieMenu and MistePieMenu.Parent do
         if espEnabled then
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= plr and player.Character then
@@ -868,4 +857,4 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
-print("MistePieMenu v5 loaded!")
+print("MistePieMenu v5.1 loaded!")
