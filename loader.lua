@@ -1,7 +1,6 @@
--- MistePieMenu v10.1 (Fixed Critical Errors)
+-- MistePieMenu v10.2 (Fixed + Loading)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
--- Очистка FOV с проверкой getgenv и Destroy
 if getgenv and getgenv().MistePieFOV then
     pcall(function() getgenv().MistePieFOV:Destroy() end)
     getgenv().MistePieFOV = nil
@@ -18,6 +17,14 @@ local TweenService = game:GetService("TweenService")
 local VIM = game:GetService("VirtualInputManager")
 local plr = Players.LocalPlayer
 
+-- Значения слайдеров (обновляются при изменении)
+local aimbotFOVValue = 90
+local aimbotSpeedValue = 10
+local aimbotSmoothValue = 10
+local hitboxSizeValue = 1
+local flySpeedValue = 50
+local speedValue = 50
+
 local MistePieMenu = Instance.new("ScreenGui")
 MistePieMenu.Name = "MistePieMenu"
 MistePieMenu.ResetOnSpawn = true
@@ -32,7 +39,63 @@ MistePieMenu.Destroying:Connect(function()
     end
 end)
 
--- Новый стиль
+-- Экран загрузки
+local LoadingScreen = Instance.new("Frame")
+LoadingScreen.Size = UDim2.new(0, 300, 0, 80)
+LoadingScreen.Position = UDim2.new(0.5, -150, 0.5, -40)
+LoadingScreen.BackgroundColor3 = Color3.fromRGB(10, 12, 20)
+LoadingScreen.BorderSizePixel = 0
+LoadingScreen.ZIndex = 1000
+LoadingScreen.Parent = MistePieMenu
+
+local LoadingCorner = Instance.new("UICorner")
+LoadingCorner.CornerRadius = UDim.new(0, 10)
+LoadingCorner.Parent = LoadingScreen
+
+local LoadingStroke = Instance.new("UIStroke")
+LoadingStroke.Color = Color3.fromRGB(60, 120, 255)
+LoadingStroke.Thickness = 1
+LoadingStroke.Parent = LoadingScreen
+
+local LoadingText = Instance.new("TextLabel")
+LoadingText.Size = UDim2.new(1, 0, 0, 40)
+LoadingText.BackgroundTransparency = 1
+LoadingText.Text = "Загрузка MistePieMenu..."
+LoadingText.TextColor3 = Color3.fromRGB(100, 160, 255)
+LoadingText.TextSize = 16
+LoadingText.Font = Enum.Font.GothamBold
+LoadingText.Parent = LoadingScreen
+
+local LoadingBar = Instance.new("Frame")
+LoadingBar.Position = UDim2.new(0, 20, 0, 45)
+LoadingBar.Size = UDim2.new(1, -40, 0, 8)
+LoadingBar.BackgroundColor3 = Color3.fromRGB(30, 35, 55)
+LoadingBar.BorderSizePixel = 0
+LoadingBar.Parent = LoadingScreen
+
+local LoadingBarCorner = Instance.new("UICorner")
+LoadingBarCorner.CornerRadius = UDim.new(0, 4)
+LoadingBarCorner.Parent = LoadingBar
+
+local LoadingFill = Instance.new("Frame")
+LoadingFill.Size = UDim2.new(0, 0, 1, 0)
+LoadingFill.BackgroundColor3 = Color3.fromRGB(60, 120, 255)
+LoadingFill.BorderSizePixel = 0
+LoadingFill.Parent = LoadingBar
+
+local LoadingFillCorner = Instance.new("UICorner")
+LoadingFillCorner.CornerRadius = UDim.new(0, 4)
+LoadingFillCorner.Parent = LoadingFill
+
+-- Анимация загрузки
+task.spawn(function()
+    for i = 0, 100, 10 do
+        LoadingFill.Size = UDim2.new(i / 100, 0, 1, 0)
+        task.wait(0.03)
+    end
+    LoadingScreen:Destroy()
+end)
+
 local Container = Instance.new("Frame")
 Container.Name = "Container"
 Container.Position = UDim2.new(0.5, -300, 0.5, -250)
@@ -75,7 +138,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 15, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "✦ MISTE v10.1 ✦"
+TitleText.Text = "✦ MISTE v10.2 ✦"
 TitleText.TextColor3 = Color3.fromRGB(100, 160, 255)
 TitleText.TextSize = 18
 TitleText.Font = Enum.Font.GothamBold
@@ -93,10 +156,6 @@ CloseBtn.TextSize = 16
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.ZIndex = 999
 CloseBtn.Parent = TitleBar
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseBtn
 
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -184,7 +243,7 @@ local function createToggle(name, text, pos, parentObj)
     return toggle
 end
 
-local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentObj)
+local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentObj, callback)
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = name .. "Frame"
     sliderFrame.Position = pos
@@ -240,6 +299,7 @@ local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentO
         sliderFill.Size = UDim2.new(percent, 0, 1, 0)
         sliderKnob.Position = UDim2.new(percent, -8, 0, -8)
         sliderLabel.Text = text .. ": " .. math.floor(value)
+        if callback then callback(math.floor(value)) end
         return value
     end
 
@@ -266,11 +326,11 @@ local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentO
     return {
         Frame = sliderFrame,
         Label = sliderLabel,
-        GetValue = function() return tonumber(sliderLabel.Text:match(": (%d+)")) or defaultVal end
+        GetValue = function() return defaultVal end
     }
 end
 
-local function createInput(name, labelText, placeholder, pos, parentObj)
+local function createInput(name, labelText, placeholder, pos, parentObj, callback)
     local inputFrame = Instance.new("Frame")
     inputFrame.Name = name .. "Frame"
     inputFrame.Position = pos
@@ -296,7 +356,7 @@ local function createInput(name, labelText, placeholder, pos, parentObj)
     inputBox.BackgroundColor3 = Color3.fromRGB(25, 30, 50)
     inputBox.BorderSizePixel = 0
     inputBox.PlaceholderText = placeholder
-    inputBox.Text = ""
+    inputBox.Text = placeholder
     inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     inputBox.TextSize = 11
     inputBox.Font = Enum.Font.Gotham
@@ -306,6 +366,11 @@ local function createInput(name, labelText, placeholder, pos, parentObj)
     local inputCorner = Instance.new("UICorner")
     inputCorner.CornerRadius = UDim.new(0, 4)
     inputCorner.Parent = inputBox
+
+    inputBox.FocusLost:Connect(function()
+        local val = tonumber(inputBox.Text) or tonumber(placeholder) or 50
+        if callback then callback(val) end
+    end)
 
     return inputBox
 end
@@ -355,10 +420,10 @@ HumanBtn.Font = Enum.Font.Gotham
 HumanBtn.Parent = ContentFrame
 
 local AimbotToggle = createToggle("AimbotToggle", "Aimbot", UDim2.new(0, 15, 0, 65), ContentFrame)
-local AimbotFOVSlider = createSlider("AimbotFOV", "FOV", UDim2.new(0, 15, 0, 110), 10, 360, 90, ContentFrame)
-local AimbotSpeedSlider = createSlider("AimbotSpeed", "Speed", UDim2.new(0, 15, 0, 165), 1, 20, 10, ContentFrame)
-local AimbotSmoothSlider = createSlider("AimbotSmooth", "Smooth", UDim2.new(0, 15, 0, 220), 1, 20, 10, ContentFrame)
-local HitboxSlider = createSlider("HitboxSlider", "Hitbox", UDim2.new(0, 15, 0, 275), 1, 3, 1, ContentFrame)
+local AimbotFOVSlider = createSlider("AimbotFOV", "FOV", UDim2.new(0, 15, 0, 110), 10, 360, 90, ContentFrame, function(v) aimbotFOVValue = v end)
+local AimbotSpeedSlider = createSlider("AimbotSpeed", "Speed", UDim2.new(0, 15, 0, 165), 1, 20, 10, ContentFrame, function(v) aimbotSpeedValue = v end)
+local AimbotSmoothSlider = createSlider("AimbotSmooth", "Smooth", UDim2.new(0, 15, 0, 220), 1, 20, 10, ContentFrame, function(v) aimbotSmoothValue = v end)
+local HitboxSlider = createSlider("HitboxSlider", "Hitbox", UDim2.new(0, 15, 0, 275), 1, 3, 1, ContentFrame, function(v) hitboxSizeValue = v end)
 local TriggerBotToggle = createToggle("TriggerBotToggle", "Trigger Bot", UDim2.new(0, 15, 0, 330), ContentFrame)
 
 -- === VISUAL TAB ===
@@ -366,10 +431,10 @@ local ESPToggle = createToggle("ESPToggle", "ESP 3D", UDim2.new(0, 15, 0, 10), C
 
 -- === MISC TAB ===
 local FlyToggle = createToggle("FlyToggle", "Fly", UDim2.new(0, 15, 0, 10), ContentFrame)
-local FlySpeedInput = createInput("FlySpeedInput", "Fly Speed:", "50", UDim2.new(0, 15, 0, 55), ContentFrame)
+local FlySpeedInput = createInput("FlySpeedInput", "Fly Speed:", "50", UDim2.new(0, 15, 0, 55), ContentFrame, function(v) flySpeedValue = v end)
 local NoclipToggle = createToggle("NoclipToggle", "Noclip", UDim2.new(0, 15, 0, 110), ContentFrame)
 local SpeedToggle = createToggle("SpeedToggle", "Speed Hack", UDim2.new(0, 15, 0, 155), ContentFrame)
-local SpeedValueInput = createInput("SpeedValueInput", "Speed:", "50", UDim2.new(0, 15, 0, 200), ContentFrame)
+local SpeedValueInput = createInput("SpeedValueInput", "Speed:", "50", UDim2.new(0, 15, 0, 200), ContentFrame, function(v) speedValue = v end)
 local InfJumpToggle = createToggle("InfJumpToggle", "Inf Jump", UDim2.new(0, 15, 0, 255), ContentFrame)
 local NoRecoilToggle = createToggle("NoRecoilToggle", "No Recoil", UDim2.new(0, 15, 0, 300), ContentFrame)
 
@@ -391,10 +456,6 @@ local infJumpEnabled = false
 local espEnabled = false
 local noRecoilEnabled = false
 
-local aimFOV = 90
-local aimSpeed = 10
-local aimSmooth = 10
-local hitboxSize = 1
 local aimbotMode = "Rage"
 local panelVisible = false
 local humanDelayUntil = 0
@@ -564,26 +625,16 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Inf Jump (без task.wait в обработчике)
+-- Inf Jump (только JumpRequest)
 UIS.JumpRequest:Connect(function()
     if infJumpEnabled and char and hum then
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- Поддержание бесконечного прыжка через Heartbeat
-RunService.Heartbeat:Connect(function()
-    if infJumpEnabled and char and hum then
-        if hum.FloorMaterial == Enum.Material.Air and UIS:IsKeyDown(Enum.KeyCode.Space) then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end
-end)
-
 -- Fly + Speed
 RunService.RenderStepped:Connect(function(deltaTime)
     if speedEnabled and char and hum and rootPart then
-        local speedValue = tonumber(SpeedValueInput.Text) or 50
         local moveDirection = hum.MoveDirection
         if moveDirection.Magnitude > 0 then
             moveDirection = moveDirection.Unit
@@ -596,7 +647,6 @@ RunService.RenderStepped:Connect(function(deltaTime)
 
     if flyEnabled and char and hum and rootPart then
         hum.PlatformStand = true
-        local flySpeed = tonumber(FlySpeedInput.Text) or 50
         local direction = Vector3.new()
         local camera = workspace.CurrentCamera
         if UIS:IsKeyDown(Enum.KeyCode.W) then direction += camera.CFrame.LookVector end
@@ -606,7 +656,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
         if UIS:IsKeyDown(Enum.KeyCode.Space) then direction += Vector3.new(0, 1, 0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then direction -= Vector3.new(0, 1, 0) end
         if direction.Magnitude > 0 then direction = direction.Unit end
-        rootPart.Velocity = direction * flySpeed
+        rootPart.AssemblyLinearVelocity = direction * flySpeedValue
     elseif not flyEnabled and hum then
         hum.PlatformStand = false
     end
@@ -698,73 +748,95 @@ task.spawn(function()
     end
 end)
 
--- Magic Bullet (без прямой перезаписи FireServer)
-local magicBulletHooked = false
-local originalFireServer = nil
+-- Magic Bullet через __namecall (исправлено)
+local oldNamecall = nil
+local namecallHooked = false
 
-local function hookFireServer(remote)
-    if not originalFireServer then
-        originalFireServer = remote.FireServer
+local function setupNamecallHook()
+    if namecallHooked then return end
+    
+    -- Проверка наличия getnamecallmethod
+    if not getnamecallmethod then
+        print("getnamecallmethod не доступен")
+        return
     end
-    -- Используем hookfunction если доступен
-    if hookfunction then
-        local oldFunc = hookfunction(remote.FireServer, function(self, ...)
-            local args = {...}
-            local closestEnemy = nil
-            local closestDist = math.huge
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= plr and player.Character then
-                    local targetHead = player.Character:FindFirstChild("Head")
-                    if targetHead and rootPart then
-                        local dist = (targetHead.Position - rootPart.Position).Magnitude
-                        if dist < closestDist then
-                            closestDist = dist
-                            closestEnemy = targetHead
+    
+    local mt = getrawmetatable(game)
+    if not mt then
+        print("getrawmetatable вернул nil")
+        return
+    end
+    
+    if not mt.__namecall then
+        print("__namecall не найден")
+        return
+    end
+    
+    oldNamecall = mt.__namecall
+    
+    local function newNamecall(self, ...)
+        local args = {...}
+        
+        if magicBulletEnabled and self and typeof(self) == "Instance" then
+            if self:IsA("RemoteEvent") then
+                local method = getnamecallmethod()
+                if method == "FireServer" then
+                    if char and rootPart then
+                        local closestEnemy = nil
+                        local closestDist = math.huge
+                        for _, player in ipairs(Players:GetPlayers()) do
+                            if player ~= plr and player.Character then
+                                local targetHead = player.Character:FindFirstChild("Head")
+                                if targetHead then
+                                    local dist = (targetHead.Position - rootPart.Position).Magnitude
+                                    if dist < closestDist then
+                                        closestDist = dist
+                                        closestEnemy = targetHead
+                                    end
+                                end
+                            end
+                        end
+
+                        if closestEnemy then
+                            for i, arg in ipairs(args) do
+                                if typeof(arg) == "Vector3" then
+                                    args[i] = closestEnemy.Position
+                                elseif typeof(arg) == "CFrame" then
+                                    args[i] = CFrame.new(closestEnemy.Position)
+                                elseif typeof(arg) == "number" and arg > 0 and arg < 1000 then
+                                    args[i] = arg * 10
+                                end
+                            end
                         end
                     end
                 end
             end
-
-            if closestEnemy then
-                for i, arg in ipairs(args) do
-                    if typeof(arg) == "Vector3" then
-                        args[i] = closestEnemy.Position
-                    elseif typeof(arg) == "CFrame" then
-                        args[i] = CFrame.new(closestEnemy.Position)
-                    elseif typeof(arg) == "number" and arg > 0 and arg < 1000 then
-                        args[i] = arg * 10
-                    end
-                end
-            end
-
-            return oldFunc(self, unpack(args))
-        end)
-        magicBulletHooked = true
-    end
-end
-
-local function findDamageRemote(tool)
-    for _, child in ipairs(tool:GetDescendants()) do
-        if child:IsA("RemoteEvent") then
-            return child
+        end
+        
+        -- Безопасный вызов с проверкой
+        if oldNamecall then
+            return oldNamecall(self, unpack(args))
         end
     end
-    return nil
+    
+    local success = pcall(function()
+        setreadonly(mt, false)
+        mt.__namecall = newNamecall
+        setreadonly(mt, true)
+    end)
+    
+    if success then
+        namecallHooked = true
+        print("Namecall hook установлен")
+    else
+        print("Не удалось установить namecall hook")
+    end
 end
 
+-- Настройка хука при запуске
 task.spawn(function()
-    while MistePieMenu and MistePieMenu.Parent do
-        if magicBulletEnabled and char and rootPart then
-            local tool = char:FindFirstChildOfClass("Tool")
-            if tool then
-                local remote = findDamageRemote(tool)
-                if remote and not magicBulletHooked then
-                    hookFireServer(remote)
-                end
-            end
-        end
-        task.wait(0.5)
-    end
+    task.wait(1)
+    setupNamecallHook()
 end)
 
 -- FOV Circle
@@ -782,11 +854,10 @@ end
 
 RunService.RenderStepped:Connect(function()
     if aimbotEnabled and FOVCircle then
-        aimFOV = AimbotFOVSlider.GetValue()
         local camera = workspace.CurrentCamera
         local screenSize = camera.ViewportSize
         local center = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
-        local radius = math.tan(math.rad(aimFOV) / 2) * (screenSize.Y / 2)
+        local radius = math.tan(math.rad(aimbotFOVValue) / 2) * (screenSize.Y / 2)
         FOVCircle.Visible = true
         FOVCircle.Radius = radius
         FOVCircle.Position = center
@@ -795,14 +866,25 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Aimbot
+-- Aimbot с Raycast проверкой стен
+local function canSeeTarget(targetHead)
+    if not char or not rootPart then return false end
+    local camera = workspace.CurrentCamera
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {char, targetHead.Parent}
+    
+    local result = workspace:Raycast(camera.CFrame.Position, targetHead.Position - camera.CFrame.Position, raycastParams)
+    return result == nil
+end
+
 local function getClosestInFOV()
     if not char or not rootPart then return nil end
     local camera = workspace.CurrentCamera
     local cameraPos = camera.CFrame.Position
     local cameraForward = camera.CFrame.LookVector
     local closestTarget = nil
-    local closestAngle = math.rad(aimFOV)
+    local closestAngle = math.rad(aimbotFOVValue)
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= plr and player.Character then
@@ -811,7 +893,7 @@ local function getClosestInFOV()
             if targetHum and targetHead and targetHum.Health > 0 then
                 local directionToTarget = (targetHead.Position - cameraPos).Unit
                 local angle = math.acos(math.clamp(cameraForward:Dot(directionToTarget), -1, 1))
-                if angle < closestAngle then
+                if angle < closestAngle and canSeeTarget(targetHead) then
                     closestAngle = angle
                     closestTarget = {Head = targetHead, Player = player}
                 end
@@ -821,7 +903,7 @@ local function getClosestInFOV()
     return closestTarget
 end
 
--- Trigger Bot (отдельный поток)
+-- Trigger Bot
 task.spawn(function()
     while MistePieMenu and MistePieMenu.Parent do
         if triggerBotEnabled and aimbotEnabled then
@@ -837,25 +919,24 @@ task.spawn(function()
     end
 end)
 
--- Хитбоксы
+-- Хитбоксы (только Head)
 local lastHitboxSize = 1
 
 local function applyHitboxSize()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= plr and player.Character then
-            for _, part in ipairs(player.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part:IsDescendantOf(workspace) then
-                    if hitboxSize > 1 then
-                        if not part:GetAttribute("OriginalSize") then
-                            part:SetAttribute("OriginalSize", part.Size)
-                        end
-                        part.Size = part:GetAttribute("OriginalSize") * hitboxSize
-                    else
-                        local origSize = part:GetAttribute("OriginalSize")
-                        if origSize then
-                            part.Size = origSize
-                            part:SetAttribute("OriginalSize", nil)
-                        end
+            local targetHead = player.Character:FindFirstChild("Head")
+            if targetHead and targetHead:IsDescendantOf(workspace) then
+                if hitboxSizeValue > 1 then
+                    if not targetHead:GetAttribute("OriginalSize") then
+                        targetHead:SetAttribute("OriginalSize", targetHead.Size)
+                    end
+                    targetHead.Size = targetHead:GetAttribute("OriginalSize") * hitboxSizeValue
+                else
+                    local origSize = targetHead:GetAttribute("OriginalSize")
+                    if origSize then
+                        targetHead.Size = origSize
+                        targetHead:SetAttribute("OriginalSize", nil)
                     end
                 end
             end
@@ -863,14 +944,9 @@ local function applyHitboxSize()
     end
 end
 
--- Aimbot без task.wait в RenderStepped
 RunService.RenderStepped:Connect(function(deltaTime)
-    aimSpeed = AimbotSpeedSlider.GetValue()
-    aimSmooth = AimbotSmoothSlider.GetValue()
-    hitboxSize = HitboxSlider.GetValue()
-
-    if hitboxSize ~= lastHitboxSize then
-        lastHitboxSize = hitboxSize
+    if hitboxSizeValue ~= lastHitboxSize then
+        lastHitboxSize = hitboxSizeValue
         applyHitboxSize()
     end
 
@@ -883,7 +959,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
                 camera.CFrame = CFrame.lookAt(camera.CFrame.Position, target.Head.Position)
             elseif aimbotMode == "Legit" then
                 local targetCFrame = CFrame.lookAt(camera.CFrame.Position, target.Head.Position)
-                local smoothFactor = aimSmooth / 100
+                local smoothFactor = aimbotSmoothValue / 100
                 camera.CFrame = camera.CFrame:Lerp(targetCFrame, smoothFactor)
             elseif aimbotMode == "Human" then
                 local currentTime = os.clock()
@@ -897,4 +973,4 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
-print("MistePieMenu v10.1 loaded!")
+print("MistePieMenu v10.2 loaded!")
