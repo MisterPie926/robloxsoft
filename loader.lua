@@ -1,4 +1,4 @@
--- MistePieMenu v5.1 (Исправленный)
+-- MistePieMenu v6 (Bypass + Fixed)
 local parent = (gethui and gethui()) or game:GetService('CoreGui') or game:GetService('Players').LocalPlayer:WaitForChild('PlayerGui')
 
 if parent:FindFirstChild("MistePieMenu") then
@@ -87,7 +87,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 1, 0)
 TitleText.Position = UDim2.new(0, 20, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "✦ MISTE PIE v5.1 ✦"
+TitleText.Text = "✦ MISTE PIE v6 ✦"
 TitleText.TextColor3 = Color3.fromRGB(180, 130, 255)
 TitleText.TextSize = 22
 TitleText.Font = Enum.Font.GothamBold
@@ -232,18 +232,18 @@ local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentO
     knobCorner.Parent = sliderKnob
 
     local dragging = false
-    
+
     local function updateSlider(input)
         local mousePos = input.Position.X
         local sliderAbsPos = sliderBg.AbsolutePosition.X
         local sliderWidth = sliderBg.AbsoluteSize.X
         local percent = math.clamp((mousePos - sliderAbsPos) / sliderWidth, 0, 1)
         local value = minVal + (maxVal - minVal) * percent
-        
+
         sliderFill.Size = UDim2.new(percent, 0, 1, 0)
         sliderKnob.Position = UDim2.new(percent, -10, 0, -9)
         sliderLabel.Text = text .. ": " .. math.floor(value)
-        
+
         return value
     end
 
@@ -276,7 +276,7 @@ local function createSlider(name, text, pos, minVal, maxVal, defaultVal, parentO
     }
 end
 
--- Функция создания TextBox с лейблом
+-- Функция создания TextBox
 local function createInput(name, labelText, placeholder, pos, parentObj)
     local inputFrame = Instance.new("Frame")
     inputFrame.Name = name .. "Frame"
@@ -324,10 +324,10 @@ local AimbotSpeedSlider = createSlider("AimbotSpeed", "Speed", UDim2.new(0, 20, 
 local ESPToggle = createToggle("ESPToggle", "ESP", UDim2.new(0, 20, 0, 15), ContentFrame)
 
 -- === ВКЛАДКА MISC ===
-local FlyToggle = createToggle("FlyToggle", "Fly", UDim2.new(0, 20, 0, 15), ContentFrame)
+local FlyToggle = createToggle("FlyToggle", "Fly (Bypass)", UDim2.new(0, 20, 0, 15), ContentFrame)
 local FlySpeedInput = createInput("FlySpeedInput", "Скорость полёта:", "50", UDim2.new(0, 20, 0, 65), ContentFrame)
-local NoclipToggle = createToggle("NoclipToggle", "Noclip", UDim2.new(0, 20, 0, 125), ContentFrame)
-local SpeedToggle = createToggle("SpeedToggle", "Speed Hack", UDim2.new(0, 20, 0, 175), ContentFrame)
+local NoclipToggle = createToggle("NoclipToggle", "Noclip (Desync)", UDim2.new(0, 20, 0, 125), ContentFrame)
+local SpeedToggle = createToggle("SpeedToggle", "Speed (TP-Walk)", UDim2.new(0, 20, 0, 175), ContentFrame)
 local SpeedValueInput = createInput("SpeedValueInput", "Скорость:", "50", UDim2.new(0, 20, 0, 225), ContentFrame)
 local JumpToggle = createToggle("JumpToggle", "Jump Hack", UDim2.new(0, 20, 0, 285), ContentFrame)
 
@@ -437,7 +437,7 @@ ScriptViewerClose.MouseButton1Click:Connect(function()
     ScriptViewer.Visible = false
 end)
 
--- Функция построения дерева ReplicatedStorage (исправленная)
+-- Функция построения дерева (исправленная)
 local function buildToolsTree()
     for _, child in ipairs(ToolsList:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextButton") then
@@ -449,7 +449,7 @@ local function buildToolsTree()
         local itemFrame = Instance.new("Frame")
         itemFrame.Size = UDim2.new(1, -20, 0, 35)
         itemFrame.BackgroundTransparency = 1
-        itemFrame.Parent = ToolsList -- UIListLayout сам расставит позиции
+        itemFrame.Parent = ToolsList
 
         local itemBtn = Instance.new("TextButton")
         itemBtn.Size = UDim2.new(1, -80, 1, 0)
@@ -457,7 +457,12 @@ local function buildToolsTree()
         itemBtn.BackgroundColor3 = Color3.fromRGB(70, 50, 120)
         itemBtn.BackgroundTransparency = 0.2
         itemBtn.BorderSizePixel = 0
-        itemBtn.Text = string.rep("  ", depth) .. (item:IsA("Folder") or item:IsA("Model") or item:IsA("Configuration") and "📁 " or "📄 ") .. item.Name
+
+        -- ИСПРАВЛЕНО: Проверка типа вынесена отдельно
+        local isFolderLike = item:IsA("Folder") or item:IsA("Model") or item:IsA("Configuration")
+        local icon = isFolderLike and "📁 " or "📄 "
+        itemBtn.Text = string.rep("  ", depth) .. icon .. item.Name
+
         itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         itemBtn.TextSize = 11
         itemBtn.Font = Enum.Font.Gotham
@@ -498,7 +503,7 @@ local function buildToolsTree()
         viewCorner.CornerRadius = UDim.new(0, 5)
         viewCorner.Parent = viewBtn
 
-        if item:IsA("Folder") or item:IsA("Model") or item:IsA("Configuration") then
+        if isFolderLike then
             local isExpanded = false
             local childItems = {}
 
@@ -546,7 +551,7 @@ local function buildToolsTree()
                 end
             end)
 
-            -- Просмотр скрипта (с pcall для защиты)
+            -- Просмотр скрипта (с pcall)
             if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then
                 viewBtn.MouseButton1Click:Connect(function()
                     ScriptViewer.Visible = true
@@ -593,7 +598,7 @@ local function animateShow(frame)
     frame.Size = UDim2.new(0, 0, 0, 0)
     frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     frame.BackgroundTransparency = 1
-    
+
     TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, 700, 0, 560),
         Position = UDim2.new(0.5, -350, 0.5, -280),
@@ -607,7 +612,7 @@ local function animateHide(frame)
         Position = UDim2.new(0.5, 0, 0.5, 0),
         BackgroundTransparency = 1
     }):Play()
-    
+
     task.delay(0.2, function()
         frame.Visible = false
     end)
@@ -685,17 +690,20 @@ SpeedToggle.MouseButton1Click:Connect(function()
     speedEnabled = not speedEnabled
     SpeedToggle.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
     SpeedToggle.BackgroundColor3 = speedEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(90, 50, 140)
-    if hum then
-        hum.WalkSpeed = speedEnabled and (tonumber(SpeedValueInput.Text) or 50) or 16
-    end
 end)
 
 JumpToggle.MouseButton1Click:Connect(function()
     jumpEnabled = not jumpEnabled
     JumpToggle.Text = "Jump: " .. (jumpEnabled and "ON" or "OFF")
     JumpToggle.BackgroundColor3 = jumpEnabled and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(90, 50, 140)
+
+    -- ИСПРАВЛЕНО: Правильный JumpPower/JumpHeight
     if hum then
-        hum.JumpPower = jumpEnabled and 50 or 7.2
+        if hum.UseJumpHeight then
+            hum.JumpHeight = jumpEnabled and 25 or 7.2
+        else
+            hum.JumpPower = jumpEnabled and 120 or 50
+        end
     end
 end)
 
@@ -710,10 +718,15 @@ plr.CharacterAdded:Connect(function(newChar)
     char = newChar
     hum = char:WaitForChild("Humanoid")
     rootPart = char:WaitForChild("HumanoidRootPart")
-    
+
     if flyEnabled then hum.PlatformStand = true end
-    if speedEnabled then hum.WalkSpeed = tonumber(SpeedValueInput.Text) or 50 end
-    if jumpEnabled then hum.JumpPower = 50 end
+    if jumpEnabled then
+        if hum.UseJumpHeight then
+            hum.JumpHeight = 25
+        else
+            hum.JumpPower = 120
+        end
+    end
     if noclipEnabled then
         task.spawn(function()
             task.wait(0.5)
@@ -726,7 +739,7 @@ plr.CharacterAdded:Connect(function(newChar)
     end
 end)
 
--- Noclip цикл
+-- Noclip (Desync) цикл
 RunService.Stepped:Connect(function()
     if noclipEnabled and char then
         for _, part in ipairs(char:GetDescendants()) do
@@ -737,7 +750,22 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Fly цикл
+-- Speed Hack (TP-Walk) цикл
+RunService.RenderStepped:Connect(function(deltaTime)
+    if speedEnabled and char and hum and rootPart then
+        speedValue = tonumber(SpeedValueInput.Text) or 50
+        local moveDirection = hum.MoveDirection
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit
+            local stepDistance = (speedValue - 16) * deltaTime * 0.5
+            if stepDistance > 0 then
+                rootPart.CFrame = rootPart.CFrame + (moveDirection * stepDistance)
+            end
+        end
+    end
+end)
+
+-- Fly (Spoofing) цикл
 RunService.RenderStepped:Connect(function()
     if flyEnabled and char and hum and rootPart then
         hum.PlatformStand = true
@@ -753,6 +781,17 @@ RunService.RenderStepped:Connect(function()
         if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
 
         if direction.Magnitude > 0 then direction = direction.Unit end
+
+        -- Спуфинг состояния: периодически сбрасываем PlatformStand
+        if math.random(1, 60) == 1 then
+            hum.PlatformStand = false
+            task.delay(0.05, function()
+                if hum and flyEnabled then
+                    hum.PlatformStand = true
+                end
+            end)
+        end
+
         rootPart.Velocity = direction * flySpeed
     end
 end)
@@ -795,11 +834,11 @@ RunService.RenderStepped:Connect(function()
         local camera = workspace.CurrentCamera
         aimFOV = AimbotFOVSlider.GetValue()
         aimSpeed = AimbotSpeedSlider.GetValue()
-        
+
         local screenSize = camera.ViewportSize
         local center = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
         local radius = math.tan(math.rad(aimFOV) / 2) * (screenSize.Y / 2)
-        
+
         FOVCircle.Visible = true
         FOVCircle.Radius = radius
         FOVCircle.Position = center
@@ -824,7 +863,7 @@ local function getClosestInFOV()
             local targetChar = player.Character
             local targetHum = targetChar:FindFirstChild("Humanoid")
             local targetHead = targetChar:FindFirstChild("Head")
-            
+
             if targetHum and targetHead and targetHum.Health > 0 then
                 local directionToTarget = (targetHead.Position - cameraPos).Unit
                 local angle = math.acos(math.clamp(cameraForward:Dot(directionToTarget), -1, 1))
@@ -846,7 +885,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
         if target then
             local camera = workspace.CurrentCamera
             local targetCFrame = CFrame.lookAt(camera.CFrame.Position, target.Position)
-            
+
             if aimSpeed >= 20 then
                 camera.CFrame = targetCFrame
             else
@@ -857,4 +896,4 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
-print("MistePieMenu v5.1 loaded!")
+print("MistePieMenu v6 loaded with bypass!")
